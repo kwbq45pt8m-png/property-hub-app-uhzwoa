@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { Platform } from "react-native";
 import * as Linking from "expo-linking";
@@ -143,28 +144,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithSocial = async (provider: "google" | "apple" | "github") => {
     try {
+      console.log(`Starting ${provider} sign-in flow...`);
+      
       if (Platform.OS === "web") {
+        console.log(`Opening ${provider} OAuth popup...`);
         const token = await openOAuthPopup(provider);
+        console.log(`${provider} OAuth popup returned token, setting bearer token...`);
         await setBearerToken(token);
+        console.log(`Fetching user session after ${provider} sign-in...`);
         await fetchUser();
+        console.log(`${provider} sign-in completed successfully`);
       } else {
         // Native: Use expo-linking to generate a proper deep link
-        const callbackURL = Linking.createURL("/");
+        const callbackURL = Linking.createURL("/auth-callback");
+        console.log(`Native ${provider} sign-in with callback URL: ${callbackURL}`);
+        
         await authClient.signIn.social({
           provider,
           callbackURL,
         });
+        
+        console.log(`${provider} sign-in initiated, waiting for callback...`);
         // Note: The redirect will reload the app or be handled by deep linking.
-        // fetchUser will be called on mount or via event listener if needed.
-        // For simple flow, we might need to listen to URL events.
-        // But better-auth expo client handles the redirect and session storage?
-        // We typically need to wait or rely on fetchUser on next app load.
-        // For now, call fetchUser just in case.
+        // fetchUser will be called on mount or via event listener.
         await fetchUser();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(`${provider} sign in failed:`, error);
-      throw error;
+      
+      // Provide more helpful error messages
+      let errorMessage = error.message || "Authentication failed";
+      
+      if (errorMessage.includes("500")) {
+        errorMessage = `${provider} sign-in is temporarily unavailable. The authentication server encountered an error. Please try again in a moment.`;
+      } else if (errorMessage.includes("cancelled")) {
+        errorMessage = "Sign-in was cancelled";
+      } else if (errorMessage.includes("popup")) {
+        errorMessage = "Please allow popups to sign in with " + provider;
+      }
+      
+      // Create a new error with the friendly message
+      const friendlyError = new Error(errorMessage);
+      throw friendlyError;
     }
   };
 

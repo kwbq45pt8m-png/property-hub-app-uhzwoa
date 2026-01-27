@@ -7,10 +7,10 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  Alert,
   Platform,
   KeyboardAvoidingView,
   ScrollView,
+  Modal,
 } from "react-native";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "expo-router";
@@ -27,6 +27,8 @@ export default function AuthScreen() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [errorModalVisible, setErrorModalVisible] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   if (authLoading) {
     return (
@@ -36,9 +38,14 @@ export default function AuthScreen() {
     );
   }
 
+  const showError = (message: string) => {
+    setErrorMessage(message);
+    setErrorModalVisible(true);
+  };
+
   const handleEmailAuth = async () => {
     if (!email || !password) {
-      Alert.alert("Error", "Please enter email and password");
+      showError("Please enter email and password");
       return;
     }
 
@@ -49,14 +56,11 @@ export default function AuthScreen() {
         router.replace("/");
       } else {
         await signUpWithEmail(email, password, name);
-        Alert.alert(
-          "Success",
-          "Account created! Please check your email to verify your account."
-        );
+        showError("Success! Account created. Please check your email to verify your account.");
         router.replace("/");
       }
     } catch (error: any) {
-      Alert.alert("Error", error.message || "Authentication failed");
+      showError(error.message || "Authentication failed");
     } finally {
       setLoading(false);
     }
@@ -76,7 +80,7 @@ export default function AuthScreen() {
       router.replace("/");
     } catch (error: any) {
       console.error(`${provider} sign-in error:`, error);
-      Alert.alert("Error", error.message || "Authentication failed");
+      showError(error.message || "Authentication failed");
     } finally {
       setLoading(false);
     }
@@ -176,6 +180,27 @@ export default function AuthScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Error Modal */}
+      <Modal
+        visible={errorModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setErrorModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Notice</Text>
+            <Text style={styles.modalMessage}>{errorMessage}</Text>
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={() => setErrorModalVisible(false)}
+            >
+              <Text style={styles.modalButtonText}>OK</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -276,5 +301,42 @@ const styles = StyleSheet.create({
   },
   appleButtonText: {
     color: "#fff",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 24,
+    width: "80%",
+    maxWidth: 400,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 12,
+    textAlign: "center",
+  },
+  modalMessage: {
+    fontSize: 16,
+    color: "#333",
+    marginBottom: 24,
+    textAlign: "center",
+    lineHeight: 22,
+  },
+  modalButton: {
+    backgroundColor: "#007AFF",
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  modalButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });
