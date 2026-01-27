@@ -18,6 +18,7 @@ import { IconSymbol } from "@/components/IconSymbol";
 import { colors } from "@/styles/commonStyles";
 import { useAuth } from "@/contexts/AuthContext";
 import { authenticatedGet } from "@/utils/api";
+import AdModal from "@/components/AdModal";
 
 const { width } = Dimensions.get('window');
 
@@ -50,6 +51,7 @@ export default function PropertyDetailScreen() {
   const [property, setProperty] = useState<Property | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+  const [showAdModal, setShowAdModal] = useState(false);
   
   // Always call useVideoPlayer unconditionally, but with a fallback URL
   const videoPlayer = useVideoPlayer(property?.virtualTourUrl || '', (player) => {
@@ -75,6 +77,17 @@ export default function PropertyDetailScreen() {
     console.log("Loading property details for ID:", id);
     loadProperty();
   }, [id, loadProperty]);
+
+  const handleStartChatClick = () => {
+    console.log("User tapped Contact Owner button - showing ad first");
+    setShowAdModal(true);
+  };
+
+  const handleAdComplete = () => {
+    console.log("Ad completed - proceeding to start chat");
+    setShowAdModal(false);
+    handleStartChat();
+  };
 
   const handleStartChat = async () => {
     if (!property) return;
@@ -263,7 +276,7 @@ export default function PropertyDetailScreen() {
           <View style={styles.footer}>
             <TouchableOpacity
               style={styles.contactButton}
-              onPress={handleStartChat}
+              onPress={handleStartChatClick}
             >
               <IconSymbol 
                 ios_icon_name="message.fill" 
@@ -275,6 +288,8 @@ export default function PropertyDetailScreen() {
             </TouchableOpacity>
           </View>
         )}
+
+        <AdModal isVisible={showAdModal} onAdComplete={handleAdComplete} />
       </View>
     </>
   );

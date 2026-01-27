@@ -21,6 +21,7 @@ import { colors } from "@/styles/commonStyles";
 import { useAuth } from "@/contexts/AuthContext";
 import { authenticatedPost, BACKEND_URL, getBearerToken } from "@/utils/api";
 import * as ImagePicker from "expo-image-picker";
+import AdModal from "@/components/AdModal";
 
 const HK_DISTRICTS = [
   "Central and Western",
@@ -67,6 +68,7 @@ export default function ListPropertyScreen() {
   const [uploadingVideo, setUploadingVideo] = useState(false);
   const [showDistrictPicker, setShowDistrictPicker] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showAdModal, setShowAdModal] = useState(false);
 
   const handlePickPhotos = async () => {
     console.log("User tapped Add Photos button");
@@ -208,8 +210,19 @@ export default function ListPropertyScreen() {
     setVirtualTourVideoUrl("");
   };
 
+  const handleSubmitClick = () => {
+    console.log("User tapped Submit Property button - showing ad first");
+    setShowAdModal(true);
+  };
+
+  const handleAdComplete = () => {
+    console.log("Ad completed - proceeding with property submission");
+    setShowAdModal(false);
+    handleSubmit();
+  };
+
   const handleSubmit = async () => {
-    console.log("User tapped Submit Property button");
+    console.log("Submitting property listing");
 
     const titleTrimmed = title.trim();
     const descriptionTrimmed = description.trim();
@@ -505,7 +518,7 @@ export default function ListPropertyScreen() {
 
           <TouchableOpacity
             style={[styles.submitButton, loading && styles.submitButtonDisabled]}
-            onPress={handleSubmit}
+            onPress={handleSubmitClick}
             disabled={loading}
             activeOpacity={0.8}
           >
@@ -606,6 +619,8 @@ export default function ListPropertyScreen() {
           </View>
         </View>
       </Modal>
+
+      <AdModal isVisible={showAdModal} onAdComplete={handleAdComplete} />
     </SafeAreaView>
   );
 }

@@ -15,6 +15,7 @@ import { IconSymbol } from "@/components/IconSymbol";
 import { colors } from "@/styles/commonStyles";
 import { useAuth } from "@/contexts/AuthContext";
 import { authenticatedGet } from "@/utils/api";
+import AdModal from "@/components/AdModal";
 
 interface Chat {
   id: string;
@@ -36,13 +37,21 @@ export default function ProfileScreen() {
   const [chats, setChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(true);
   const [showSignOutModal, setShowSignOutModal] = useState(false);
+  const [showAdModal, setShowAdModal] = useState(false);
+  const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
 
   useEffect(() => {
-    console.log("ProfileScreen mounted, loading chats");
+    console.log("ProfileScreen mounted - showing ad before loading chats");
     if (user) {
-      loadChats();
+      setShowAdModal(true);
     }
   }, [user]);
+
+  const handleAdComplete = () => {
+    console.log("Ad completed - loading chats");
+    setShowAdModal(false);
+    loadChats();
+  };
 
   const loadChats = async () => {
     try {
@@ -233,6 +242,8 @@ export default function ProfileScreen() {
           </View>
         </View>
       </Modal>
+
+      <AdModal isVisible={showAdModal} onAdComplete={handleAdComplete} />
     </SafeAreaView>
   );
 }
