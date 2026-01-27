@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import {
   View,
@@ -62,6 +63,7 @@ export default function AuthScreen() {
   };
 
   const handleSocialAuth = async (provider: "google" | "apple" | "github") => {
+    console.log(`User tapped ${provider} sign-in button`);
     setLoading(true);
     try {
       if (provider === "google") {
@@ -73,11 +75,18 @@ export default function AuthScreen() {
       }
       router.replace("/");
     } catch (error: any) {
+      console.error(`${provider} sign-in error:`, error);
       Alert.alert("Error", error.message || "Authentication failed");
     } finally {
       setLoading(false);
     }
   };
+
+  const titleText = mode === "signin" ? "Sign In" : "Sign Up";
+  const primaryButtonText = mode === "signin" ? "Sign In" : "Sign Up";
+  const switchModeText = mode === "signin"
+    ? "Don't have an account? Sign Up"
+    : "Already have an account? Sign In";
 
   return (
     <KeyboardAvoidingView
@@ -87,7 +96,7 @@ export default function AuthScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.content}>
           <Text style={styles.title}>
-            {mode === "signin" ? "Sign In" : "Sign Up"}
+            {titleText}
           </Text>
 
           {mode === "signup" && (
@@ -128,7 +137,7 @@ export default function AuthScreen() {
               <ActivityIndicator color="#fff" />
             ) : (
               <Text style={styles.primaryButtonText}>
-                {mode === "signin" ? "Sign In" : "Sign Up"}
+                {primaryButtonText}
               </Text>
             )}
           </TouchableOpacity>
@@ -138,9 +147,7 @@ export default function AuthScreen() {
             onPress={() => setMode(mode === "signin" ? "signup" : "signin")}
           >
             <Text style={styles.switchModeText}>
-              {mode === "signin"
-                ? "Don't have an account? Sign Up"
-                : "Already have an account? Sign In"}
+              {switchModeText}
             </Text>
           </TouchableOpacity>
 
@@ -158,17 +165,15 @@ export default function AuthScreen() {
             <Text style={styles.socialButtonText}>Continue with Google</Text>
           </TouchableOpacity>
 
-          {Platform.OS === "ios" && (
-            <TouchableOpacity
-              style={[styles.socialButton, styles.appleButton]}
-              onPress={() => handleSocialAuth("apple")}
-              disabled={loading}
-            >
-              <Text style={[styles.socialButtonText, styles.appleButtonText]}>
-                Continue with Apple
-              </Text>
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity
+            style={[styles.socialButton, styles.appleButton]}
+            onPress={() => handleSocialAuth("apple")}
+            disabled={loading}
+          >
+            <Text style={[styles.socialButtonText, styles.appleButtonText]}>
+              Continue with Apple
+            </Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
