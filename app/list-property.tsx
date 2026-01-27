@@ -11,13 +11,16 @@ import {
   Platform,
   Alert,
   Modal,
+  Image,
+  ImageSourcePropType,
 } from "react-native";
 import { useRouter, Stack } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { IconSymbol } from "@/components/IconSymbol";
 import { colors } from "@/styles/commonStyles";
 import { useAuth } from "@/contexts/AuthContext";
-import { authenticatedPost } from "@/utils/api";
+import { authenticatedPost, BACKEND_URL, getBearerToken } from "@/utils/api";
+import * as ImagePicker from "expo-image-picker";
 
 const HK_DISTRICTS = [
   "Central and Western",
@@ -40,6 +43,13 @@ const HK_DISTRICTS = [
   "Yuen Long",
 ];
 
+// Helper to resolve image sources (handles both local require() and remote URLs)
+function resolveImageSource(source: string | number | ImageSourcePropType | undefined): ImageSourcePropType {
+  if (!source) return { uri: '' };
+  if (typeof source === 'string') return { uri: source };
+  return source as ImageSourcePropType;
+}
+
 export default function ListPropertyScreen() {
   const router = useRouter();
   const { user } = useAuth();
@@ -50,10 +60,153 @@ export default function ListPropertyScreen() {
   const [size, setSize] = useState("");
   const [district, setDistrict] = useState("");
   const [equipment, setEquipment] = useState("");
-  const [virtualTourUrl, setVirtualTourUrl] = useState("");
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [virtualTourVideoUrl, setVirtualTourVideoUrl] = useState("");
   const [loading, setLoading] = useState(false);
+  const [uploadingPhotos, setUploadingPhotos] = useState(false);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
   const [showDistrictPicker, setShowDistrictPicker] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+
+  const handlePickPhotos = async () => {
+    console.log("User tapped Add Photos button");
+
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permissionResult.granted) {
+      Alert.alert("Permission Required", "Please allow access to your photo library to upload photos");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: "images",
+      allowsMultipleSelection: true,
+      quality: 0.8,
+      selectionLimit: 10,
+    });
+
+    if (!result.canceled && result.assets.length > 0) {
+      console.log("Selected photos:", result.assets.length);
+      setUploadingPhotos(true);
+
+      try {
+        const uploadedUrls: string[] = [];
+
+        for (const asset of result.assets) {
+          const token = await getBearerToken();
+          if (!token) {
+            throw new Error("Authentication token not found");
+          }
+
+          const formData = new FormData();
+          const uriParts = asset.uri.split('.');
+          const fileType = uriParts[uriParts.length - 1];
+
+          formData.append('image', {
+            uri: asset.uri,
+            name: `photo.${fileType}`,
+            type: `image/${fileType}`,
+          } as any);
+
+          const response = await fetch(`${BACKEND_URL}/api/upload/property-image`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+            body: formData,
+          });
+
+          if (!response.ok) {
+            throw new Error(`Upload failed: ${response.status}`);
+          }
+
+          const data = await response.json();
+          uploadedUrls.push(data.url);
+          console.log("Photo uploaded:", data.url);
+        }
+
+        setPhotos([...photos, ...uploadedUrls]);
+        console.log("✅ All photos uploaded successfully!");
+      } catch (error) {
+        console.error("Error uploading photos:", error);
+        Alert.alert("Upload Error", "Failed to upload photos. Please try again.");
+      } finally {
+        setUploadingPhotos(false);
+      }
+    }
+  };
+
+  const handleRemovePhoto = (index: number) => {
+    console.log("Removing photo at index:", index);
+    const newPhotos = photos.filter((_, i) => i !== index);
+    setPhotos(newPhotos);
+  };
+
+  const handlePickVideo = async () => {
+    console.log("User tapped Add Virtual Tour Video button");
+
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permissionResult.granted) {
+      Alert.alert("Permission Required", "Please allow access to your photo library to upload videos");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: "videos",
+      allowsMultipleSelection: false,
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets.length > 0) {
+      console.log("Selected video:", result.assets[0].uri);
+      setUploadingVideo(true);
+
+      try {
+        const asset = result.assets[0];
+        const token = await getBearerToken();
+        if (!token) {
+          throw new Error("Authentication token not found");
+        }
+
+        const formData = new FormData();
+        const uriParts = asset.uri.split('.');
+        const fileType = uriParts[uriParts.length - 1];
+
+        formData.append('video', {
+          uri: asset.uri,
+          name: `video.${fileType}`,
+          type: `video/${fileType}`,
+        } as any);
+
+        const response = await fetch(`${BACKEND_URL}/api/upload/virtual-tour-video`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+          body: formData,
+        });
+
+        if (!response.ok) {
+          throw new Error(`Upload failed: ${response.status}`);
+        }
+
+        const data = await response.json();
+        setVirtualTourVideoUrl(data.url);
+        console.log("✅ Video uploaded successfully:", data.url);
+      } catch (error) {
+        console.error("Error uploading video:", error);
+        Alert.alert("Upload Error", "Failed to upload video. Please try again.");
+      } finally {
+        setUploadingVideo(false);
+      }
+    }
+  };
+
+  const handleRemoveVideo = () => {
+    console.log("Removing virtual tour video");
+    setVirtualTourVideoUrl("");
+  };
 
   const handleSubmit = async () => {
     console.log("User tapped Submit Property button");
@@ -96,6 +249,8 @@ export default function ListPropertyScreen() {
         price: priceTrimmed,
         size: sizeTrimmed,
         district: districtTrimmed,
+        photosCount: photos.length,
+        hasVideo: !!virtualTourVideoUrl,
       });
 
       const propertyData = {
@@ -105,8 +260,8 @@ export default function ListPropertyScreen() {
         size: parseInt(sizeTrimmed, 10),
         district: districtTrimmed,
         equipment: equipment.trim(),
-        virtualTourUrl: virtualTourUrl.trim() || undefined,
-        photos: [],
+        virtualTourUrl: virtualTourVideoUrl.trim() || undefined,
+        photos: photos,
       };
 
       await authenticatedPost("/api/properties", propertyData);
@@ -245,16 +400,107 @@ export default function ListPropertyScreen() {
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Virtual Tour URL (Optional)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g., https://..."
-              placeholderTextColor={colors.textSecondary}
-              value={virtualTourUrl}
-              onChangeText={setVirtualTourUrl}
-              keyboardType="url"
-              autoCapitalize="none"
-            />
+            <Text style={styles.label}>Property Photos</Text>
+            <TouchableOpacity
+              style={styles.uploadButton}
+              onPress={handlePickPhotos}
+              disabled={uploadingPhotos}
+              activeOpacity={0.7}
+            >
+              {uploadingPhotos ? (
+                <ActivityIndicator color={colors.primary} />
+              ) : (
+                <React.Fragment>
+                  <IconSymbol
+                    ios_icon_name="photo"
+                    android_material_icon_name="photo"
+                    size={24}
+                    color={colors.primary}
+                  />
+                  <Text style={styles.uploadButtonText}>Add Photos</Text>
+                </React.Fragment>
+              )}
+            </TouchableOpacity>
+
+            {photos.length > 0 && (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.photoPreviewContainer}
+              >
+                {photos.map((photoUrl, index) => {
+                  const photoSource = resolveImageSource(photoUrl);
+                  return (
+                    <View key={index} style={styles.photoPreview}>
+                      <Image source={photoSource} style={styles.photoImage} />
+                      <TouchableOpacity
+                        style={styles.removePhotoButton}
+                        onPress={() => handleRemovePhoto(index)}
+                      >
+                        <IconSymbol
+                          ios_icon_name="xmark.circle.fill"
+                          android_material_icon_name="cancel"
+                          size={24}
+                          color="#FF3B30"
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })}
+              </ScrollView>
+            )}
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Virtual Tour Video (Optional)</Text>
+            <TouchableOpacity
+              style={styles.uploadButton}
+              onPress={handlePickVideo}
+              disabled={uploadingVideo || !!virtualTourVideoUrl}
+              activeOpacity={0.7}
+            >
+              {uploadingVideo ? (
+                <ActivityIndicator color={colors.primary} />
+              ) : (
+                <React.Fragment>
+                  <IconSymbol
+                    ios_icon_name="video"
+                    android_material_icon_name="videocam"
+                    size={24}
+                    color={colors.primary}
+                  />
+                  <Text style={styles.uploadButtonText}>
+                    {virtualTourVideoUrl ? "Video Added" : "Add Virtual Tour Video"}
+                  </Text>
+                </React.Fragment>
+              )}
+            </TouchableOpacity>
+
+            {virtualTourVideoUrl && (
+              <View style={styles.videoPreviewContainer}>
+                <View style={styles.videoPreview}>
+                  <IconSymbol
+                    ios_icon_name="video.fill"
+                    android_material_icon_name="videocam"
+                    size={32}
+                    color={colors.primary}
+                  />
+                  <Text style={styles.videoPreviewText}>Virtual tour video added</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.removeVideoButton}
+                  onPress={handleRemoveVideo}
+                >
+                  <IconSymbol
+                    ios_icon_name="trash"
+                    android_material_icon_name="delete"
+                    size={20}
+                    color="#FF3B30"
+                  />
+                  <Text style={styles.removeVideoButtonText}>Remove</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
 
           <TouchableOpacity
@@ -545,5 +791,77 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.textSecondary,
     textAlign: 'center',
+  },
+  uploadButton: {
+    backgroundColor: colors.backgroundAlt,
+    borderWidth: 2,
+    borderColor: colors.primary,
+    borderStyle: 'dashed',
+    borderRadius: 12,
+    paddingVertical: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  uploadButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  photoPreviewContainer: {
+    marginTop: 12,
+  },
+  photoPreview: {
+    width: 100,
+    height: 100,
+    marginRight: 12,
+    borderRadius: 8,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  photoImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  removePhotoButton: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 12,
+  },
+  videoPreviewContainer: {
+    marginTop: 12,
+    backgroundColor: colors.backgroundAlt,
+    borderRadius: 12,
+    padding: 16,
+    gap: 12,
+  },
+  videoPreview: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  videoPreviewText: {
+    fontSize: 16,
+    color: colors.text,
+    fontWeight: '500',
+  },
+  removeVideoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#FF3B3020',
+    borderRadius: 8,
+  },
+  removeVideoButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FF3B30',
   },
 });

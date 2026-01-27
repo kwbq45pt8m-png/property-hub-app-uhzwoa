@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   StyleSheet,
   View,
@@ -10,9 +10,10 @@ import {
   ActivityIndicator,
   ImageSourcePropType,
   Dimensions,
-  Linking,
+  Platform,
 } from "react-native";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
+import { VideoView, useVideoPlayer } from "expo-video";
 import { IconSymbol } from "@/components/IconSymbol";
 import { colors } from "@/styles/commonStyles";
 import { useAuth } from "@/contexts/AuthContext";
@@ -49,6 +50,14 @@ export default function PropertyDetailScreen() {
   const [property, setProperty] = useState<Property | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+  
+  // Initialize video player only when we have a video URL
+  const videoPlayer = property?.virtualTourUrl 
+    ? useVideoPlayer(property.virtualTourUrl, (player) => {
+        player.loop = false;
+        player.muted = false;
+      })
+    : null;
 
   useEffect(() => {
     console.log("Loading property details for ID:", id);
@@ -82,10 +91,13 @@ export default function PropertyDetailScreen() {
     }
   };
 
-  const handleOpenVirtualTour = () => {
-    if (property?.virtualTourUrl) {
-      console.log("Opening virtual tour:", property.virtualTourUrl);
-      Linking.openURL(property.virtualTourUrl);
+  const handlePlayVideo = () => {
+    if (videoPlayer) {
+      if (videoPlayer.playing) {
+        videoPlayer.pause();
+      } else {
+        videoPlayer.play();
+      }
     }
   };
 
@@ -215,20 +227,32 @@ export default function PropertyDetailScreen() {
               </View>
             )}
 
-            {/* Virtual Tour */}
-            {property.virtualTourUrl && (
-              <TouchableOpacity
-                style={styles.virtualTourButton}
-                onPress={handleOpenVirtualTour}
-              >
-                <IconSymbol 
-                  ios_icon_name="view.3d" 
-                  android_material_icon_name="view-in-ar" 
-                  size={24} 
-                  color={colors.primary} 
-                />
-                <Text style={styles.virtualTourText}>View Virtual Tour</Text>
-              </TouchableOpacity>
+            {/* Virtual Tour Video */}
+            {property.virtualTourUrl && videoPlayer && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Virtual Tour</Text>
+                <View style={styles.videoContainer}>
+                  <VideoView
+                    player={videoPlayer}
+                    style={styles.video}
+                    nativeControls
+                    contentFit="contain"
+                  />
+                  {!videoPlayer.playing && (
+                    <TouchableOpacity
+                      style={styles.videoPlayButton}
+                      onPress={handlePlayVideo}
+                    >
+                      <IconSymbol 
+                        ios_icon_name="play.circle.fill" 
+                        android_material_icon_name="play-circle-filled" 
+                        size={64} 
+                        color="#FFFFFF" 
+                      />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
             )}
 
             <View style={styles.bottomPadding} />
@@ -385,21 +409,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.text,
   },
-  virtualTourButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.highlight,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
+  videoContainer: {
+    width: '100%',
+    height: 250,
+    backgroundColor: colors.backgroundAlt,
     borderRadius: 12,
-    gap: 12,
-    marginTop: 8,
+    overflow: 'hidden',
+    position: 'relative',
   },
-  virtualTourText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.primary,
+  video: {
+    width: '100%',
+    height: '100%',
+  },
+  videoPlayButton: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -32 }, { translateY: -32 }],
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 32,
   },
   bottomPadding: {
     height: 20,
