@@ -146,6 +146,11 @@ export default function HomeScreen() {
     router.push(`/property/${propertyId}`);
   };
 
+  const handleListProperty = () => {
+    console.log("User tapped List Property button");
+    router.push("/list-property");
+  };
+
   const clearFilters = () => {
     console.log("Clearing filters");
     setSelectedDistrict("All Districts");
@@ -173,8 +178,23 @@ export default function HomeScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Find Your Home</Text>
-        <Text style={styles.headerSubtitle}>{welcomeMessage}</Text>
+        <View style={styles.headerTextContainer}>
+          <Text style={styles.headerTitle}>Find Your Home</Text>
+          <Text style={styles.headerSubtitle}>{welcomeMessage}</Text>
+        </View>
+        <TouchableOpacity 
+          style={styles.listPropertyButton}
+          onPress={handleListProperty}
+          activeOpacity={0.8}
+        >
+          <IconSymbol 
+            ios_icon_name="plus" 
+            android_material_icon_name="add" 
+            size={20} 
+            color="#FFFFFF" 
+          />
+          <Text style={styles.listPropertyButtonText}>List Property</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Search Bar */}
@@ -255,7 +275,12 @@ export default function HomeScreen() {
               />
               <Text style={styles.emptyText}>No properties found</Text>
               <Text style={styles.emptySubtext}>Try adjusting your filters or check back later</Text>
-              <Text style={styles.emptyHint}>Property owners can list their properties to appear here</Text>
+              <TouchableOpacity 
+                style={styles.emptyActionButton}
+                onPress={handleListProperty}
+              >
+                <Text style={styles.emptyActionButtonText}>List Your Property</Text>
+              </TouchableOpacity>
             </View>
           ) : (
             filteredProperties.map((property) => {
@@ -405,6 +430,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: Platform.OS === 'android' ? 20 : 10,
     paddingBottom: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  headerTextContainer: {
+    flex: 1,
   },
   headerTitle: {
     fontSize: 32,
@@ -415,6 +446,22 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 16,
     color: colors.textSecondary,
+  },
+  listPropertyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    gap: 6,
+    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.15)',
+    elevation: 3,
+  },
+  listPropertyButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   searchContainer: {
     flexDirection: 'row',
@@ -500,12 +547,17 @@ const styles = StyleSheet.create({
     marginTop: 8,
     textAlign: 'center',
   },
-  emptyHint: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginTop: 16,
-    textAlign: 'center',
-    fontStyle: 'italic',
+  emptyActionButton: {
+    marginTop: 24,
+    backgroundColor: colors.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 12,
+  },
+  emptyActionButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   propertyCard: {
     backgroundColor: colors.card,
