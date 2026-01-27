@@ -19,6 +19,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { IconSymbol } from "@/components/IconSymbol";
 import { colors } from "@/styles/commonStyles";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage, Language } from "@/contexts/LanguageContext";
 import { authenticatedGet } from "@/utils/api";
 
 // Helper to resolve image sources
@@ -68,12 +69,14 @@ export default function HomeScreen() {
   const theme = useTheme();
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  const { language, setLanguage, t } = useLanguage();
   
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDistrict, setSelectedDistrict] = useState("All Districts");
   const [showFilters, setShowFilters] = useState(false);
+  const [showLanguageMenu, setShowLanguageMenu] = useState(false);
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [minSize, setMinSize] = useState("");
@@ -160,6 +163,21 @@ export default function HomeScreen() {
     setMaxSize("");
   };
 
+  const handleLanguageChange = (lang: Language) => {
+    console.log("User changed language to:", lang);
+    setLanguage(lang);
+    setShowLanguageMenu(false);
+  };
+
+  const getLanguageDisplayName = (lang: Language): string => {
+    const names: Record<Language, string> = {
+      en: "English",
+      "zh-TW": "繁體中文",
+      "zh-CN": "简体中文",
+    };
+    return names[lang];
+  };
+
   if (authLoading) {
     return (
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -172,14 +190,37 @@ export default function HomeScreen() {
     return null;
   }
 
-  const welcomeMessage = `Welcome back${user.name ? ', ' + user.name : ''}!`;
+  const welcomeMessage = user.name ? `${t("welcomeBack")}, ${user.name}!` : `${t("welcomeBack")}!`;
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+      {/* Language Selector */}
+      <View style={styles.languageBar}>
+        <TouchableOpacity
+          style={styles.languageButton}
+          onPress={() => setShowLanguageMenu(true)}
+          activeOpacity={0.7}
+        >
+          <IconSymbol
+            ios_icon_name="globe"
+            android_material_icon_name="language"
+            size={20}
+            color={colors.primary}
+          />
+          <Text style={styles.languageButtonText}>{getLanguageDisplayName(language)}</Text>
+          <IconSymbol
+            ios_icon_name="chevron.down"
+            android_material_icon_name="arrow-drop-down"
+            size={16}
+            color={colors.textSecondary}
+          />
+        </TouchableOpacity>
+      </View>
+
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerTextContainer}>
-          <Text style={styles.headerTitle}>Find Your Home</Text>
+          <Text style={styles.headerTitle}>{t("findYourHome")}</Text>
           <Text style={styles.headerSubtitle}>{welcomeMessage}</Text>
         </View>
         <TouchableOpacity 
@@ -193,7 +234,7 @@ export default function HomeScreen() {
             size={20} 
             color="#FFFFFF" 
           />
-          <Text style={styles.listPropertyButtonText}>List Property</Text>
+          <Text style={styles.listPropertyButtonText}>{t("listProperty")}</Text>
         </TouchableOpacity>
       </View>
 
@@ -207,7 +248,7 @@ export default function HomeScreen() {
         />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search properties..."
+          placeholder={t("searchProperties")}
           placeholderTextColor={colors.textSecondary}
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -257,7 +298,7 @@ export default function HomeScreen() {
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading properties...</Text>
+          <Text style={styles.loadingText}>{t("loadingProperties")}</Text>
         </View>
       ) : (
         <ScrollView 
@@ -273,13 +314,13 @@ export default function HomeScreen() {
                 size={64} 
                 color={colors.textSecondary} 
               />
-              <Text style={styles.emptyText}>No properties found</Text>
-              <Text style={styles.emptySubtext}>Try adjusting your filters or check back later</Text>
+              <Text style={styles.emptyText}>{t("noPropertiesFound")}</Text>
+              <Text style={styles.emptySubtext}>{t("tryAdjustingFilters")}</Text>
               <TouchableOpacity 
                 style={styles.emptyActionButton}
                 onPress={handleListProperty}
               >
-                <Text style={styles.emptyActionButtonText}>List Your Property</Text>
+                <Text style={styles.emptyActionButtonText}>{t("listYourProperty")}</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -336,6 +377,78 @@ export default function HomeScreen() {
         </ScrollView>
       )}
 
+      {/* Language Selection Modal */}
+      <Modal
+        visible={showLanguageMenu}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowLanguageMenu(false)}
+      >
+        <TouchableOpacity 
+          style={styles.languageModalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowLanguageMenu(false)}
+        >
+          <View style={styles.languageModalContent}>
+            <Text style={styles.languageModalTitle}>Select Language</Text>
+            
+            <TouchableOpacity
+              style={[
+                styles.languageOption,
+                language === "en" && styles.languageOptionSelected,
+              ]}
+              onPress={() => handleLanguageChange("en")}
+            >
+              <Text style={styles.languageOptionText}>English</Text>
+              {language === "en" && (
+                <IconSymbol
+                  ios_icon_name="checkmark"
+                  android_material_icon_name="check"
+                  size={20}
+                  color={colors.primary}
+                />
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.languageOption,
+                language === "zh-TW" && styles.languageOptionSelected,
+              ]}
+              onPress={() => handleLanguageChange("zh-TW")}
+            >
+              <Text style={styles.languageOptionText}>繁體中文</Text>
+              {language === "zh-TW" && (
+                <IconSymbol
+                  ios_icon_name="checkmark"
+                  android_material_icon_name="check"
+                  size={20}
+                  color={colors.primary}
+                />
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.languageOption,
+                language === "zh-CN" && styles.languageOptionSelected,
+              ]}
+              onPress={() => handleLanguageChange("zh-CN")}
+            >
+              <Text style={styles.languageOptionText}>简体中文</Text>
+              {language === "zh-CN" && (
+                <IconSymbol
+                  ios_icon_name="checkmark"
+                  android_material_icon_name="check"
+                  size={20}
+                  color={colors.primary}
+                />
+              )}
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
       {/* Filters Modal */}
       <Modal
         visible={showFilters}
@@ -346,7 +459,7 @@ export default function HomeScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Filters</Text>
+              <Text style={styles.modalTitle}>{t("filters")}</Text>
               <TouchableOpacity onPress={() => setShowFilters(false)}>
                 <IconSymbol 
                   ios_icon_name="xmark" 
@@ -358,11 +471,11 @@ export default function HomeScreen() {
             </View>
 
             <ScrollView style={styles.modalScroll}>
-              <Text style={styles.filterLabel}>Price Range (HK$)</Text>
+              <Text style={styles.filterLabel}>{t("priceRange")}</Text>
               <View style={styles.filterRow}>
                 <TextInput
                   style={styles.filterInput}
-                  placeholder="Min"
+                  placeholder={t("min")}
                   placeholderTextColor={colors.textSecondary}
                   value={minPrice}
                   onChangeText={setMinPrice}
@@ -371,7 +484,7 @@ export default function HomeScreen() {
                 <Text style={styles.filterSeparator}>-</Text>
                 <TextInput
                   style={styles.filterInput}
-                  placeholder="Max"
+                  placeholder={t("max")}
                   placeholderTextColor={colors.textSecondary}
                   value={maxPrice}
                   onChangeText={setMaxPrice}
@@ -379,11 +492,11 @@ export default function HomeScreen() {
                 />
               </View>
 
-              <Text style={styles.filterLabel}>Size Range (sq ft)</Text>
+              <Text style={styles.filterLabel}>{t("sizeRange")}</Text>
               <View style={styles.filterRow}>
                 <TextInput
                   style={styles.filterInput}
-                  placeholder="Min"
+                  placeholder={t("min")}
                   placeholderTextColor={colors.textSecondary}
                   value={minSize}
                   onChangeText={setMinSize}
@@ -392,7 +505,7 @@ export default function HomeScreen() {
                 <Text style={styles.filterSeparator}>-</Text>
                 <TextInput
                   style={styles.filterInput}
-                  placeholder="Max"
+                  placeholder={t("max")}
                   placeholderTextColor={colors.textSecondary}
                   value={maxSize}
                   onChangeText={setMaxSize}
@@ -405,13 +518,13 @@ export default function HomeScreen() {
                   style={styles.clearButton}
                   onPress={clearFilters}
                 >
-                  <Text style={styles.clearButtonText}>Clear All</Text>
+                  <Text style={styles.clearButtonText}>{t("clearAll")}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.applyButton}
                   onPress={() => setShowFilters(false)}
                 >
-                  <Text style={styles.applyButtonText}>Apply Filters</Text>
+                  <Text style={styles.applyButtonText}>{t("applyFilters")}</Text>
                 </TouchableOpacity>
               </View>
             </ScrollView>
@@ -426,9 +539,74 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  languageBar: {
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'android' ? 12 : 8,
+    paddingBottom: 8,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+  languageButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.backgroundAlt,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  languageButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.text,
+  },
+  languageModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  languageModalContent: {
+    backgroundColor: colors.background,
+    borderRadius: 16,
+    padding: 20,
+    width: '80%',
+    maxWidth: 300,
+    boxShadow: '0px 4px 16px rgba(0, 0, 0, 0.2)',
+    elevation: 5,
+  },
+  languageModalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  languageOption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+    backgroundColor: colors.backgroundAlt,
+  },
+  languageOptionSelected: {
+    backgroundColor: colors.primary + '20',
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  languageOptionText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: colors.text,
+  },
   header: {
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'android' ? 20 : 10,
+    paddingTop: 8,
     paddingBottom: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',

@@ -1,3 +1,4 @@
+
 import "react-native-reanimated";
 import React, { useEffect } from "react";
 import { useFonts } from "expo-font";
@@ -16,6 +17,7 @@ import {
 import { StatusBar } from "expo-status-bar";
 import { WidgetProvider } from "@/contexts/WidgetContext";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { LanguageProvider } from "@/contexts/LanguageContext";
 // Note: Error logging is auto-initialized via index.ts import
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -84,42 +86,44 @@ export default function RootLayout() {
         <ThemeProvider
           value={colorScheme === "dark" ? CustomDarkTheme : CustomDefaultTheme}
         >
-          <AuthProvider>
-            <WidgetProvider>
-              <GestureHandlerRootView>
-              <Stack>
-                {/* Auth screens */}
-                <Stack.Screen name="auth" options={{ headerShown: false }} />
-                <Stack.Screen name="auth-popup" options={{ headerShown: false }} />
-                <Stack.Screen name="auth-callback" options={{ headerShown: false }} />
-                
-                {/* Main app with tabs */}
-                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                
-                {/* Chat screen - outside tabs to avoid FloatingTabBar blocking input */}
-                <Stack.Screen 
-                  name="chat/[id]" 
-                  options={{ 
-                    headerShown: true,
-                    title: 'Chat',
-                    headerBackTitle: 'Back'
-                  }} 
-                />
-                
-                {/* Property detail screen */}
-                <Stack.Screen 
-                  name="property/[id]" 
-                  options={{ 
-                    headerShown: true,
-                    title: 'Property Details',
-                    headerBackTitle: 'Back'
-                  }} 
-                />
-              </Stack>
-              <SystemBars style={"auto"} />
-              </GestureHandlerRootView>
-            </WidgetProvider>
-          </AuthProvider>
+          <LanguageProvider>
+            <AuthProvider>
+              <WidgetProvider>
+                <GestureHandlerRootView>
+                <Stack>
+                  {/* Auth screens */}
+                  <Stack.Screen name="auth" options={{ headerShown: false }} />
+                  <Stack.Screen name="auth-popup" options={{ headerShown: false }} />
+                  <Stack.Screen name="auth-callback" options={{ headerShown: false }} />
+                  
+                  {/* Main app with tabs */}
+                  <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                  
+                  {/* Chat screen - outside tabs to avoid FloatingTabBar blocking input */}
+                  <Stack.Screen 
+                    name="chat/[id]" 
+                    options={{ 
+                      headerShown: true,
+                      title: 'Chat',
+                      headerBackTitle: 'Back'
+                    }} 
+                  />
+                  
+                  {/* Property detail screen */}
+                  <Stack.Screen 
+                    name="property/[id]" 
+                    options={{ 
+                      headerShown: true,
+                      title: 'Property Details',
+                      headerBackTitle: 'Back'
+                    }} 
+                  />
+                </Stack>
+                <SystemBars style={"auto"} />
+                </GestureHandlerRootView>
+              </WidgetProvider>
+            </AuthProvider>
+          </LanguageProvider>
         </ThemeProvider>
     </>
   );
