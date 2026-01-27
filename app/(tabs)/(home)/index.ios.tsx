@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   StyleSheet,
   View,
@@ -79,20 +79,7 @@ export default function HomeScreen() {
   const [minSize, setMinSize] = useState("");
   const [maxSize, setMaxSize] = useState("");
 
-  useEffect(() => {
-    console.log("HomeScreen mounted, checking auth status");
-    console.log("User authenticated:", !!user);
-    if (!authLoading && !user) {
-      console.log("User not authenticated, redirecting to auth screen");
-      router.replace("/auth");
-    } else if (user) {
-      console.log("✅ User logged in successfully! Welcome to the home screen.");
-      console.log("User details:", { name: user.name, email: user.email });
-      loadProperties();
-    }
-  }, [user, authLoading]);
-
-  const loadProperties = async () => {
+  const loadProperties = useCallback(async () => {
     console.log("Loading properties...");
     try {
       setLoading(true);
@@ -126,13 +113,26 @@ export default function HomeScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedDistrict, minPrice, maxPrice, minSize, maxSize]);
+
+  useEffect(() => {
+    console.log("HomeScreen mounted, checking auth status");
+    console.log("User authenticated:", !!user);
+    if (!authLoading && !user) {
+      console.log("User not authenticated, redirecting to auth screen");
+      router.replace("/auth");
+    } else if (user) {
+      console.log("✅ User logged in successfully! Welcome to the home screen.");
+      console.log("User details:", { name: user.name, email: user.email });
+      loadProperties();
+    }
+  }, [user, authLoading, loadProperties, router]);
 
   useEffect(() => {
     if (user) {
       loadProperties();
     }
-  }, [selectedDistrict, minPrice, maxPrice, minSize, maxSize]);
+  }, [user, loadProperties]);
 
   const filteredProperties = properties.filter((property) => {
     const matchesSearch = property.title.toLowerCase().includes(searchQuery.toLowerCase()) ||

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   StyleSheet,
   View,
@@ -51,20 +51,13 @@ export default function PropertyDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   
-  // Initialize video player only when we have a video URL
-  const videoPlayer = property?.virtualTourUrl 
-    ? useVideoPlayer(property.virtualTourUrl, (player) => {
-        player.loop = false;
-        player.muted = false;
-      })
-    : null;
+  // Always call useVideoPlayer unconditionally, but with a fallback URL
+  const videoPlayer = useVideoPlayer(property?.virtualTourUrl || '', (player) => {
+    player.loop = false;
+    player.muted = false;
+  });
 
-  useEffect(() => {
-    console.log("Loading property details for ID:", id);
-    loadProperty();
-  }, [id]);
-
-  const loadProperty = async () => {
+  const loadProperty = useCallback(async () => {
     try {
       setLoading(true);
       console.log("Fetching property from:", `/api/properties/${id}`);
@@ -76,7 +69,12 @@ export default function PropertyDetailScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    console.log("Loading property details for ID:", id);
+    loadProperty();
+  }, [id, loadProperty]);
 
   const handleStartChat = async () => {
     if (!property) return;
@@ -137,6 +135,7 @@ export default function PropertyDetailScreen() {
   const priceText = `HK$${property.price}`;
   const sizeText = `${property.size} sq ft`;
   const isOwner = user?.id === property.ownerId;
+  const hasVirtualTour = !!property.virtualTourUrl;
 
   return (
     <>
@@ -228,7 +227,7 @@ export default function PropertyDetailScreen() {
             )}
 
             {/* Virtual Tour Video */}
-            {property.virtualTourUrl && videoPlayer && (
+            {hasVirtualTour && (
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Virtual Tour</Text>
                 <View style={styles.videoContainer}>

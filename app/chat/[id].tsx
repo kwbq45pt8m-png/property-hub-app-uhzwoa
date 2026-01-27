@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   StyleSheet,
   View,
@@ -45,13 +45,7 @@ export default function ChatScreen() {
   const [sending, setSending] = useState(false);
   const [messageText, setMessageText] = useState("");
 
-  useEffect(() => {
-    console.log("Loading chat:", id);
-    loadChat();
-    loadMessages();
-  }, [id]);
-
-  const loadChat = async () => {
+  const loadChat = useCallback(async () => {
     try {
       console.log("Fetching chat details");
       const response = await authenticatedGet<any>(`/api/chats`);
@@ -62,9 +56,9 @@ export default function ChatScreen() {
     } catch (error) {
       console.error("Error loading chat:", error);
     }
-  };
+  }, [id]);
 
-  const loadMessages = async () => {
+  const loadMessages = useCallback(async () => {
     try {
       setLoading(true);
       console.log("Fetching messages from:", `/api/chats/${id}/messages`);
@@ -80,7 +74,13 @@ export default function ChatScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    console.log("Loading chat:", id);
+    loadChat();
+    loadMessages();
+  }, [id, loadChat, loadMessages]);
 
   const handleSendMessage = async () => {
     if (!messageText.trim() || sending) return;
