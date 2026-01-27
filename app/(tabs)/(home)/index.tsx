@@ -81,11 +81,13 @@ export default function HomeScreen() {
 
   useEffect(() => {
     console.log("HomeScreen mounted, checking auth status");
+    console.log("User authenticated:", !!user);
     if (!authLoading && !user) {
       console.log("User not authenticated, redirecting to auth screen");
       router.replace("/auth");
     } else if (user) {
-      console.log("User authenticated, loading properties");
+      console.log("✅ User logged in successfully! Welcome to the home screen.");
+      console.log("User details:", { name: user.name, email: user.email });
       loadProperties();
     }
   }, [user, authLoading]);
@@ -165,12 +167,14 @@ export default function HomeScreen() {
     return null;
   }
 
+  const welcomeMessage = `Welcome back${user.name ? ', ' + user.name : ''}!`;
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Find Your Home</Text>
-        <Text style={styles.headerSubtitle}>Discover properties in Hong Kong</Text>
+        <Text style={styles.headerSubtitle}>{welcomeMessage}</Text>
       </View>
 
       {/* Search Bar */}
@@ -250,7 +254,8 @@ export default function HomeScreen() {
                 color={colors.textSecondary} 
               />
               <Text style={styles.emptyText}>No properties found</Text>
-              <Text style={styles.emptySubtext}>Try adjusting your filters</Text>
+              <Text style={styles.emptySubtext}>Try adjusting your filters or check back later</Text>
+              <Text style={styles.emptyHint}>Property owners can list their properties to appear here</Text>
             </View>
           ) : (
             filteredProperties.map((property) => {
@@ -480,17 +485,27 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 60,
+    paddingHorizontal: 40,
   },
   emptyText: {
     fontSize: 20,
     fontWeight: '600',
     color: colors.text,
     marginTop: 16,
+    textAlign: 'center',
   },
   emptySubtext: {
     fontSize: 16,
     color: colors.textSecondary,
     marginTop: 8,
+    textAlign: 'center',
+  },
+  emptyHint: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginTop: 16,
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
   propertyCard: {
     backgroundColor: colors.card,
