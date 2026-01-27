@@ -17,6 +17,14 @@ export default function TabLayout() {
         })}
       </NativeTabs.Trigger>
       
+      <NativeTabs.Trigger name="chats">
+        <Label>Chats</Label>
+        {Platform.select({
+          ios: <Icon sf={{ default: 'message', selected: 'message.fill' }} />,
+          android: <Icon src={<VectorIcon family={MaterialIcons} name="message" />} />,
+        })}
+      </NativeTabs.Trigger>
+      
       <NativeTabs.Trigger name="profile">
         <Label>Profile</Label>
         {Platform.select({

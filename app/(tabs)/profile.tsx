@@ -8,6 +8,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Modal,
+  Image,
+  ImageSourcePropType,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -15,53 +17,51 @@ import { IconSymbol } from "@/components/IconSymbol";
 import { colors } from "@/styles/commonStyles";
 import { useAuth } from "@/contexts/AuthContext";
 import { authenticatedGet } from "@/utils/api";
-import AdModal from "@/components/AdModal";
 
-interface Chat {
+interface Property {
   id: string;
-  propertyId: string;
-  property?: {
-    title: string;
-    photos: string[];
-  };
-  renterId: string;
-  renteeId: string;
-  lastMessage: string;
-  lastMessageAt: string;
+  title: string;
+  description: string;
+  price: string;
+  size: number;
+  district: string;
+  equipment: string;
+  photos: string[];
+  virtualTourUrl?: string;
+  ownerId: string;
+  createdAt: string;
+}
+
+function resolveImageSource(source: string | number | ImageSourcePropType | undefined): ImageSourcePropType {
+  if (!source) return { uri: '' };
+  if (typeof source === 'string') return { uri: source };
+  return source as ImageSourcePropType;
 }
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, signOut } = useAuth();
   
-  const [chats, setChats] = useState<Chat[]>([]);
+  const [myListings, setMyListings] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [showSignOutModal, setShowSignOutModal] = useState(false);
-  const [showAdModal, setShowAdModal] = useState(false);
-  const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
 
   useEffect(() => {
-    console.log("ProfileScreen mounted - showing ad before loading chats");
+    console.log("ProfileScreen mounted - loading user data");
     if (user) {
-      setShowAdModal(true);
+      loadMyListings();
     }
   }, [user]);
 
-  const handleAdComplete = () => {
-    console.log("Ad completed - loading chats");
-    setShowAdModal(false);
-    loadChats();
-  };
-
-  const loadChats = async () => {
+  const loadMyListings = async () => {
     try {
       setLoading(true);
-      console.log("Fetching chats from:", "/api/chats");
-      const data = await authenticatedGet<Chat[]>("/api/chats");
-      console.log("Chats loaded:", data.length);
-      setChats(data);
+      console.log("Fetching user listings from:", "/api/my-listings");
+      const data = await authenticatedGet<Property[]>("/api/my-listings");
+      console.log("User listings loaded:", data.length);
+      setMyListings(data);
     } catch (error) {
-      console.error("Error loading chats:", error);
+      console.error("Error loading user listings:", error);
     } finally {
       setLoading(false);
     }
@@ -78,27 +78,9 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleChatPress = (chatId: string) => {
-    console.log("Opening chat:", chatId);
-    router.push(`/chat/${chatId}`);
-  };
-
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    
-    const month = date.getMonth() + 1;
-    const day = date.getDate();
-    return `${month}/${day}`;
+  const handlePropertyPress = (propertyId: string) => {
+    console.log("Opening property:", propertyId);
+    router.push(`/property/${propertyId}`);
   };
 
   if (!user) {
@@ -145,74 +127,107 @@ export default function ProfileScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Chats Section */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Your Conversations</Text>
-        
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.primary} />
-          </View>
-        ) : chats.length === 0 ? (
+      <ScrollView 
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Listed Properties Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>My Listed Properties</Text>
+          
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={colors.primary} />
+            </View>
+          ) : myListings.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <IconSymbol 
+                ios_icon_name="house" 
+                android_material_icon_name="home" 
+                size={64} 
+                color={colors.textSecondary} 
+              />
+              <Text style={styles.emptyText}>No properties listed yet</Text>
+              <Text style={styles.emptySubtext}>Start listing your properties to rent</Text>
+              <TouchableOpacity
+                style={styles.listButton}
+                onPress={() => router.push("/list-property")}
+              >
+                <IconSymbol 
+                  ios_icon_name="plus" 
+                  android_material_icon_name="add" 
+                  size={20} 
+                  color="#FFFFFF" 
+                />
+                <Text style={styles.listButtonText}>List Property</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.propertiesGrid}>
+              {myListings.map((property) => {
+                const firstPhoto = property.photos && property.photos.length > 0 ? property.photos[0] : '';
+                const priceText = `HK$${property.price}`;
+                const sizeText = `${property.size} sq ft`;
+                
+                return (
+                  <TouchableOpacity
+                    key={property.id}
+                    style={styles.propertyCard}
+                    onPress={() => handlePropertyPress(property.id)}
+                    activeOpacity={0.7}
+                  >
+                    {firstPhoto ? (
+                      <Image
+                        source={resolveImageSource(firstPhoto)}
+                        style={styles.propertyImage}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View style={styles.propertyImagePlaceholder}>
+                        <IconSymbol 
+                          ios_icon_name="house.fill" 
+                          android_material_icon_name="home" 
+                          size={40} 
+                          color={colors.textSecondary} 
+                        />
+                      </View>
+                    )}
+                    <View style={styles.propertyInfo}>
+                      <Text style={styles.propertyTitle} numberOfLines={1}>
+                        {property.title}
+                      </Text>
+                      <Text style={styles.propertyDistrict} numberOfLines={1}>
+                        {property.district}
+                      </Text>
+                      <View style={styles.propertyDetails}>
+                        <Text style={styles.propertyPrice}>{priceText}</Text>
+                        <Text style={styles.propertySize}>{sizeText}</Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
+        </View>
+
+        {/* Recent Searches Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Recent Searches</Text>
           <View style={styles.emptyContainer}>
             <IconSymbol 
-              ios_icon_name="message" 
-              android_material_icon_name="message" 
+              ios_icon_name="clock" 
+              android_material_icon_name="history" 
               size={64} 
               color={colors.textSecondary} 
             />
-            <Text style={styles.emptyText}>No conversations yet</Text>
-            <Text style={styles.emptySubtext}>Start chatting with property owners</Text>
+            <Text style={styles.emptyText}>No recent searches</Text>
+            <Text style={styles.emptySubtext}>Your search history will appear here</Text>
           </View>
-        ) : (
-          <ScrollView 
-            style={styles.chatsList}
-            showsVerticalScrollIndicator={false}
-          >
-            {chats.map((chat) => {
-              const propertyTitle = chat.property?.title || 'Property';
-              const lastMessage = chat.lastMessage || 'No messages yet';
-              const timeText = chat.lastMessageAt ? formatTime(chat.lastMessageAt) : '';
-              
-              return (
-                <TouchableOpacity
-                  key={chat.id}
-                  style={styles.chatCard}
-                  onPress={() => handleChatPress(chat.id)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.chatIcon}>
-                    <IconSymbol 
-                      ios_icon_name="house.fill" 
-                      android_material_icon_name="home" 
-                      size={24} 
-                      color={colors.primary} 
-                    />
-                  </View>
-                  <View style={styles.chatInfo}>
-                    <View style={styles.chatHeader}>
-                      <Text style={styles.chatTitle} numberOfLines={1}>
-                        {propertyTitle}
-                      </Text>
-                      <Text style={styles.chatTime}>{timeText}</Text>
-                    </View>
-                    <Text style={styles.chatMessage} numberOfLines={1}>
-                      {lastMessage}
-                    </Text>
-                  </View>
-                  <IconSymbol 
-                    ios_icon_name="chevron.right" 
-                    android_material_icon_name="chevron-right" 
-                    size={20} 
-                    color={colors.textSecondary} 
-                  />
-                </TouchableOpacity>
-              );
-            })}
-            <View style={styles.bottomPadding} />
-          </ScrollView>
-        )}
-      </View>
+        </View>
+
+        <View style={styles.bottomPadding} />
+      </ScrollView>
 
       {/* Sign Out Confirmation Modal */}
       <Modal
@@ -242,8 +257,6 @@ export default function ProfileScreen() {
           </View>
         </View>
       </Modal>
-
-      <AdModal isVisible={showAdModal} onAdComplete={handleAdComplete} />
     </SafeAreaView>
   );
 }
@@ -292,82 +305,104 @@ const styles = StyleSheet.create({
   signOutButton: {
     padding: 8,
   },
-  section: {
+  content: {
     flex: 1,
+  },
+  section: {
     paddingTop: 20,
+    paddingHorizontal: 20,
   },
   sectionTitle: {
     fontSize: 24,
     fontWeight: 'bold',
     color: colors.text,
-    paddingHorizontal: 20,
     marginBottom: 16,
   },
   loadingContainer: {
-    flex: 1,
+    paddingVertical: 40,
     justifyContent: 'center',
     alignItems: 'center',
   },
   emptyContainer: {
-    flex: 1,
+    paddingVertical: 40,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 40,
   },
   emptyText: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
     color: colors.text,
     marginTop: 16,
     textAlign: 'center',
   },
   emptySubtext: {
-    fontSize: 16,
+    fontSize: 14,
     color: colors.textSecondary,
     marginTop: 8,
     textAlign: 'center',
   },
-  chatsList: {
-    flex: 1,
-  },
-  chatCard: {
+  listButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    gap: 12,
-  },
-  chatIcon: {
-    width: 48,
-    height: 48,
+    backgroundColor: colors.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
     borderRadius: 24,
+    marginTop: 16,
+    gap: 8,
+  },
+  listButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  propertiesGrid: {
+    gap: 16,
+  },
+  propertyCard: {
+    backgroundColor: colors.backgroundAlt,
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  propertyImage: {
+    width: '100%',
+    height: 200,
+    backgroundColor: colors.highlight,
+  },
+  propertyImagePlaceholder: {
+    width: '100%',
+    height: 200,
     backgroundColor: colors.highlight,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  chatInfo: {
-    flex: 1,
+  propertyInfo: {
+    padding: 16,
   },
-  chatHeader: {
+  propertyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 4,
+  },
+  propertyDistrict: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginBottom: 8,
+  },
+  propertyDetails: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
   },
-  chatTitle: {
+  propertyPrice: {
     fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-    flex: 1,
-    marginRight: 8,
+    fontWeight: 'bold',
+    color: colors.primary,
   },
-  chatTime: {
-    fontSize: 12,
-    color: colors.textSecondary,
-  },
-  chatMessage: {
+  propertySize: {
     fontSize: 14,
     color: colors.textSecondary,
   },
