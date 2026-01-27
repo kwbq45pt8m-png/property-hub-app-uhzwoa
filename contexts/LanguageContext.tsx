@@ -70,7 +70,7 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
 const translations: Record<Language, Record<string, string>> = {
   en: {
     // Home Screen
-    findYourHome: "Find Your Home",
+    findYourHome: "Find your place",
     welcomeBack: "Welcome back",
     listProperty: "List Property",
     searchProperties: "Search properties...",
@@ -116,7 +116,7 @@ const translations: Record<Language, Record<string, string>> = {
   },
   "zh-TW": {
     // Home Screen
-    findYourHome: "尋找您的家",
+    findYourHome: "尋找您的地方",
     welcomeBack: "歡迎回來",
     listProperty: "刊登物業",
     searchProperties: "搜尋物業...",
@@ -162,7 +162,7 @@ const translations: Record<Language, Record<string, string>> = {
   },
   "zh-CN": {
     // Home Screen
-    findYourHome: "寻找您的家",
+    findYourHome: "寻找您的地方",
     welcomeBack: "欢迎回来",
     listProperty: "刊登物业",
     searchProperties: "搜索物业...",
