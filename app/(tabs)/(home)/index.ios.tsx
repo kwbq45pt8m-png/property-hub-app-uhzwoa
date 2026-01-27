@@ -43,27 +43,51 @@ interface Property {
   createdAt: string;
 }
 
-const HK_DISTRICTS = [
-  "All Districts",
-  "Central and Western",
-  "Eastern",
-  "Southern",
-  "Wan Chai",
-  "Sham Shui Po",
-  "Kowloon City",
-  "Kwun Tong",
-  "Wong Tai Sin",
-  "Yau Tsim Mong",
-  "Islands",
-  "Kwai Tsing",
-  "North",
-  "Sai Kung",
-  "Sha Tin",
-  "Tai Po",
-  "Tsuen Wan",
-  "Tuen Mun",
-  "Yuen Long",
+// District keys for translation
+const DISTRICT_KEYS = [
+  "allDistricts",
+  "centralAndWestern",
+  "eastern",
+  "southern",
+  "wanChai",
+  "shamShuiPo",
+  "kowloonCity",
+  "kwunTong",
+  "wongTaiSin",
+  "yauTsimMong",
+  "islands",
+  "kwaiTsing",
+  "north",
+  "saiKung",
+  "shaTin",
+  "taiPo",
+  "tsuenWan",
+  "tuenMun",
+  "yuenLong",
 ];
+
+// English district names for API filtering
+const DISTRICT_API_VALUES: Record<string, string> = {
+  allDistricts: "All Districts",
+  centralAndWestern: "Central and Western",
+  eastern: "Eastern",
+  southern: "Southern",
+  wanChai: "Wan Chai",
+  shamShuiPo: "Sham Shui Po",
+  kowloonCity: "Kowloon City",
+  kwunTong: "Kwun Tong",
+  wongTaiSin: "Wong Tai Sin",
+  yauTsimMong: "Yau Tsim Mong",
+  islands: "Islands",
+  kwaiTsing: "Kwai Tsing",
+  north: "North",
+  saiKung: "Sai Kung",
+  shaTin: "Sha Tin",
+  taiPo: "Tai Po",
+  tsuenWan: "Tsuen Wan",
+  tuenMun: "Tuen Mun",
+  yuenLong: "Yuen Long",
+};
 
 export default function HomeScreen() {
   const theme = useTheme();
@@ -74,7 +98,7 @@ export default function HomeScreen() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedDistrict, setSelectedDistrict] = useState("All Districts");
+  const [selectedDistrictKey, setSelectedDistrictKey] = useState("allDistricts");
   const [showFilters, setShowFilters] = useState(false);
   const [showLanguageMenu, setShowLanguageMenu] = useState(false);
   const [minPrice, setMinPrice] = useState("");
@@ -88,8 +112,9 @@ export default function HomeScreen() {
       setLoading(true);
       
       const params = new URLSearchParams();
-      if (selectedDistrict !== "All Districts") {
-        params.append("district", selectedDistrict);
+      const selectedDistrictValue = DISTRICT_API_VALUES[selectedDistrictKey];
+      if (selectedDistrictValue !== "All Districts") {
+        params.append("district", selectedDistrictValue);
       }
       if (minPrice) {
         params.append("minPrice", minPrice);
@@ -116,7 +141,7 @@ export default function HomeScreen() {
     } finally {
       setLoading(false);
     }
-  }, [selectedDistrict, minPrice, maxPrice, minSize, maxSize]);
+  }, [selectedDistrictKey, minPrice, maxPrice, minSize, maxSize]);
 
   useEffect(() => {
     console.log("HomeScreen mounted, checking auth status");
@@ -156,7 +181,7 @@ export default function HomeScreen() {
 
   const clearFilters = () => {
     console.log("Clearing filters");
-    setSelectedDistrict("All Districts");
+    setSelectedDistrictKey("allDistricts");
     setMinPrice("");
     setMaxPrice("");
     setMinSize("");
@@ -270,16 +295,17 @@ export default function HomeScreen() {
         style={styles.districtScroll}
         contentContainerStyle={styles.districtScrollContent}
       >
-        {HK_DISTRICTS.map((district) => {
-          const isSelected = selectedDistrict === district;
+        {DISTRICT_KEYS.map((districtKey) => {
+          const isSelected = selectedDistrictKey === districtKey;
+          const districtLabel = t(districtKey);
           return (
             <TouchableOpacity
-              key={district}
+              key={districtKey}
               style={[
                 styles.districtChip,
                 isSelected && styles.districtChipSelected,
               ]}
-              onPress={() => setSelectedDistrict(district)}
+              onPress={() => setSelectedDistrictKey(districtKey)}
             >
               <Text
                 style={[
@@ -287,7 +313,7 @@ export default function HomeScreen() {
                   isSelected && styles.districtChipTextSelected,
                 ]}
               >
-                {district}
+                {districtLabel}
               </Text>
             </TouchableOpacity>
           );
