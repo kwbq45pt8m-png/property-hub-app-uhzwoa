@@ -2,11 +2,11 @@
 import "react-native-reanimated";
 import React, { useEffect } from "react";
 import { useFonts } from "expo-font";
-import { Stack } from "expo-router";
+import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { SystemBars } from "react-native-edge-to-edge";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { useColorScheme, Alert } from "react-native";
+import { useColorScheme, View, ActivityIndicator } from "react-native";
 import { useNetworkState } from "expo-network";
 import {
   DarkTheme,
@@ -16,7 +16,7 @@ import {
 } from "@react-navigation/native";
 import { StatusBar } from "expo-status-bar";
 import { WidgetProvider } from "@/contexts/WidgetContext";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 // Note: Error logging is auto-initialized via index.ts import
 
@@ -27,34 +27,68 @@ export const unstable_settings = {
   initialRouteName: "(tabs)", // Ensure any route can link back to `/`
 };
 
-export default function RootLayout() {
-  const colorScheme = useColorScheme();
-  const networkState = useNetworkState();
-  const [loaded] = useFonts({
-    SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
-  });
+/**
+ * Auth Bootstrap Component
+ * Implements the AUTH BOOTSTRAP RULE to prevent redirect loops
+ * - Shows loading screen while checking authentication
+ * - Redirects to auth screen if not authenticated
+ * - Redirects to app if authenticated
+ */
+function AuthBootstrap({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  const segments = useSegments();
+  const router = useRouter();
 
   useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
+    if (loading) {
+      console.log("[AuthBootstrap] Still loading authentication state...");
+      return;
     }
-  }, [loaded]);
+
+    const inAuthGroup = segments[0] === "auth" || segments[0] === "auth-popup" || segments[0] === "auth-callback";
+    
+    console.log("[AuthBootstrap] Auth state:", { 
+      user: user?.email, 
+      loading, 
+      inAuthGroup,
+      currentSegments: segments 
+    });
+
+    if (!user && !inAuthGroup) {
+      // User is not authenticated and not in auth screens - redirect to auth
+      console.log("[AuthBootstrap] User not authenticated, redirecting to /auth");
+      router.replace("/auth");
+    } else if (user && inAuthGroup) {
+      // User is authenticated but still in auth screens - redirect to app
+      console.log("[AuthBootstrap] User authenticated, redirecting to /(tabs)");
+      router.replace("/(tabs)");
+    }
+  }, [user, loading, segments]);
+
+  // Show loading screen while checking authentication
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#fff" }}>
+        <ActivityIndicator size="large" color="#007AFF" />
+      </View>
+    );
+  }
+
+  return <>{children}</>;
+}
+
+function RootLayoutContent() {
+  const colorScheme = useColorScheme();
+  const networkState = useNetworkState();
 
   React.useEffect(() => {
     if (
       !networkState.isConnected &&
       networkState.isInternetReachable === false
     ) {
-      Alert.alert(
-        "🔌 You are offline",
-        "You can keep using the app! Your changes will be saved locally and synced when you are back online."
-      );
+      console.log("⚠️ Network offline - app will work in offline mode");
     }
   }, [networkState.isConnected, networkState.isInternetReachable]);
-
-  if (!loaded) {
-    return null;
-  }
 
   const CustomDefaultTheme: Theme = {
     ...DefaultTheme,
@@ -80,51 +114,74 @@ export default function RootLayout() {
       notification: "rgb(255, 69, 58)", // System Red (Dark Mode)
     },
   };
+
   return (
     <>
       <StatusBar style="auto" animated />
-        <ThemeProvider
-          value={colorScheme === "dark" ? CustomDarkTheme : CustomDefaultTheme}
-        >
-          <LanguageProvider>
-            <AuthProvider>
-              <WidgetProvider>
-                <GestureHandlerRootView>
-                <Stack>
-                  {/* Auth screens */}
-                  <Stack.Screen name="auth" options={{ headerShown: false }} />
-                  <Stack.Screen name="auth-popup" options={{ headerShown: false }} />
-                  <Stack.Screen name="auth-callback" options={{ headerShown: false }} />
-                  
-                  {/* Main app with tabs */}
-                  <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                  
-                  {/* Chat screen - outside tabs to avoid FloatingTabBar blocking input */}
-                  <Stack.Screen 
-                    name="chat/[id]" 
-                    options={{ 
-                      headerShown: true,
-                      title: 'Chat',
-                      headerBackTitle: 'Back'
-                    }} 
-                  />
-                  
-                  {/* Property detail screen */}
-                  <Stack.Screen 
-                    name="property/[id]" 
-                    options={{ 
-                      headerShown: true,
-                      title: 'Property Details',
-                      headerBackTitle: 'Back'
-                    }} 
-                  />
-                </Stack>
-                <SystemBars style={"auto"} />
-                </GestureHandlerRootView>
-              </WidgetProvider>
-            </AuthProvider>
-          </LanguageProvider>
-        </ThemeProvider>
+      <ThemeProvider
+        value={colorScheme === "dark" ? CustomDarkTheme : CustomDefaultTheme}
+      >
+        <AuthBootstrap>
+          <Stack>
+            {/* Auth screens */}
+            <Stack.Screen name="auth" options={{ headerShown: false }} />
+            <Stack.Screen name="auth-popup" options={{ headerShown: false }} />
+            <Stack.Screen name="auth-callback" options={{ headerShown: false }} />
+            
+            {/* Main app with tabs */}
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            
+            {/* Chat screen - outside tabs to avoid FloatingTabBar blocking input */}
+            <Stack.Screen 
+              name="chat/[id]" 
+              options={{ 
+                headerShown: true,
+                title: 'Chat',
+                headerBackTitle: 'Back'
+              }} 
+            />
+            
+            {/* Property detail screen */}
+            <Stack.Screen 
+              name="property/[id]" 
+              options={{ 
+                headerShown: true,
+                title: 'Property Details',
+                headerBackTitle: 'Back'
+              }} 
+            />
+          </Stack>
+          <SystemBars style={"auto"} />
+        </AuthBootstrap>
+      </ThemeProvider>
     </>
+  );
+}
+
+export default function RootLayout() {
+  const [loaded] = useFonts({
+    SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
+  });
+
+  useEffect(() => {
+    if (loaded) {
+      SplashScreen.hideAsync();
+    }
+  }, [loaded]);
+
+  if (!loaded) {
+    return null;
+  }
+
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <LanguageProvider>
+        <AuthProvider>
+          <WidgetProvider>
+            <RootLayoutContent />
+          </WidgetProvider>
+        </AuthProvider>
+      </LanguageProvider>
+    </GestureHandlerRootView>
   );
 }

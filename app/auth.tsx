@@ -49,18 +49,37 @@ export default function AuthScreen() {
       return;
     }
 
+    console.log(`User attempting ${mode} with email:`, email);
     setLoading(true);
     try {
       if (mode === "signin") {
+        console.log("Calling signInWithEmail...");
         await signInWithEmail(email, password);
+        console.log("Sign-in successful, navigating to home...");
         router.replace("/");
       } else {
+        console.log("Calling signUpWithEmail...");
         await signUpWithEmail(email, password, name);
-        showError("Success! Account created. Please check your email to verify your account.");
+        console.log("Sign-up successful, navigating to home...");
         router.replace("/");
       }
     } catch (error: any) {
-      showError(error.message || "Authentication failed");
+      console.error("Auth error caught in handleEmailAuth:", error);
+      
+      // Provide more helpful error messages
+      let errorMsg = error.message || "Authentication failed";
+      
+      if (errorMsg.includes("403")) {
+        errorMsg = "Authentication is temporarily unavailable. The server is being configured. Please try again in a moment.";
+      } else if (errorMsg.includes("401")) {
+        errorMsg = mode === "signin" 
+          ? "Invalid email or password. Please check your credentials and try again."
+          : "Unable to create account. This email may already be registered.";
+      } else if (errorMsg.includes("network") || errorMsg.includes("fetch")) {
+        errorMsg = "Network error. Please check your internet connection and try again.";
+      }
+      
+      showError(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -70,6 +89,8 @@ export default function AuthScreen() {
     console.log(`User tapped ${provider} sign-in button`);
     setLoading(true);
     try {
+      console.log(`Starting ${provider} authentication flow...`);
+      
       if (provider === "google") {
         await signInWithGoogle();
       } else if (provider === "apple") {
@@ -77,14 +98,25 @@ export default function AuthScreen() {
       } else if (provider === "github") {
         await signInWithGitHub();
       }
+      
+      console.log(`${provider} authentication successful, navigating to home...`);
       router.replace("/");
     } catch (error: any) {
       console.error(`${provider} sign-in error:`, error);
       
       // Provide helpful message for OAuth configuration issues
       let errorMsg = error.message || "Authentication failed";
-      if (errorMsg.includes("500") || errorMsg.includes("temporarily unavailable")) {
+      
+      if (errorMsg.includes("403")) {
+        errorMsg = "Authentication is temporarily unavailable. The server is being configured. Please try again in a moment.";
+      } else if (errorMsg.includes("500") || errorMsg.includes("temporarily unavailable")) {
         errorMsg = `${provider.charAt(0).toUpperCase() + provider.slice(1)} sign-in requires OAuth credentials to be configured. This is normal during development. OAuth will work after the app is published to the App Store with proper credentials configured in the backend.`;
+      } else if (errorMsg.includes("cancelled")) {
+        // Don't show error for user cancellation
+        console.log("User cancelled authentication");
+        return;
+      } else if (errorMsg.includes("popup")) {
+        errorMsg = `Please allow popups to sign in with ${provider}`;
       }
       
       showError(errorMsg);

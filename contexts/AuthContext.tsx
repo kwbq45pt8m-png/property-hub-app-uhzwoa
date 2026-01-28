@@ -98,19 +98,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchUser = async () => {
     try {
       setLoading(true);
+      console.log("Fetching user session...");
       const session = await authClient.getSession();
+      console.log("Session result:", session);
+      
       if (session?.data?.user) {
+        console.log("User authenticated:", session.data.user.email);
         setUser(session.data.user as User);
         // Sync token to SecureStore for utils/api.ts
         if (session.data.session?.token) {
+          console.log("Saving bearer token to storage");
           await setBearerToken(session.data.session.token);
         }
       } else {
+        console.log("No active session found");
         setUser(null);
         await clearAuthTokens();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to fetch user:", error);
+      console.error("Fetch user error details:", {
+        message: error.message,
+        status: error.status,
+      });
       setUser(null);
     } finally {
       setLoading(false);
@@ -119,25 +129,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithEmail = async (email: string, password: string) => {
     try {
-      await authClient.signIn.email({ email, password });
+      console.log("Starting email sign-in...", { email });
+      const result = await authClient.signIn.email({ email, password });
+      console.log("Email sign-in result:", result);
       await fetchUser();
-    } catch (error) {
+      console.log("Email sign-in completed successfully");
+    } catch (error: any) {
       console.error("Email sign in failed:", error);
+      console.error("Error details:", {
+        message: error.message,
+        status: error.status,
+        response: error.response,
+      });
       throw error;
     }
   };
 
   const signUpWithEmail = async (email: string, password: string, name?: string) => {
     try {
-      await authClient.signUp.email({
+      console.log("Starting email sign-up...", { email, name });
+      const result = await authClient.signUp.email({
         email,
         password,
         name,
-        // Ensure name is passed in header or logic if required, usually passed in body
       });
+      console.log("Email sign-up result:", result);
       await fetchUser();
-    } catch (error) {
+      console.log("Email sign-up completed successfully");
+    } catch (error: any) {
       console.error("Email sign up failed:", error);
+      console.error("Error details:", {
+        message: error.message,
+        status: error.status,
+        response: error.response,
+      });
       throw error;
     }
   };
