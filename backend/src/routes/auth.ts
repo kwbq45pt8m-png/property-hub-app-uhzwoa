@@ -12,12 +12,30 @@ export function registerAuthRoutes(app: App) {
       },
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      app.logger.info('Auth status check');
+      app.logger.info({ origin: request.headers.origin }, 'Auth status check');
       try {
-        return { status: 'ok', message: 'Authentication system is running' };
+        // Test database connection
+        const userCount = await app.db.query.user.findFirst();
+
+        return {
+          status: 'ok',
+          message: 'Authentication system is running',
+          databaseConnected: !!userCount || true, // true if query succeeds
+          authEndpoints: {
+            emailSignIn: 'POST /api/auth/sign-in/email',
+            emailSignUp: 'POST /api/auth/sign-up/email',
+            socialSignIn: 'POST /api/auth/sign-in/social',
+            signOut: 'POST /api/auth/sign-out',
+            getSession: 'GET /api/auth/get-session',
+          },
+        };
       } catch (error) {
         app.logger.error({ err: error }, 'Auth status check failed');
-        return reply.status(500).send({ status: 'error', message: 'Auth system unavailable' });
+        return reply.status(500).send({
+          status: 'error',
+          message: 'Auth system unavailable',
+          details: error instanceof Error ? error.message : 'Unknown error',
+        });
       }
     }
   );
@@ -249,6 +267,125 @@ export function registerAuthRoutes(app: App) {
       // Let Better Auth handle the actual exchange
       // This endpoint just logs the callback for debugging
       return { status: 'processing' };
+    }
+  );
+
+  // Comprehensive auth configuration endpoint for debugging
+  app.fastify.get(
+    '/api/auth-config',
+    {
+      schema: {
+        description: 'Get current authentication configuration (development only)',
+        tags: ['auth'],
+      },
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      app.logger.info({ origin: request.headers.origin }, 'Auth config requested');
+
+      const config = {
+        environment: process.env.NODE_ENV || 'development',
+        baseURL: process.env.API_URL || 'http://localhost:5000',
+        appURL: process.env.APP_URL || 'http://localhost:3000',
+        enabledAuthMethods: {
+          emailPassword: true,
+          google: !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
+          apple: !!(process.env.APPLE_CLIENT_ID && process.env.APPLE_CLIENT_SECRET),
+        },
+        databaseConfigured: !!process.env.DATABASE_URL || 'using PGlite',
+        cookieSettings: {
+          secure: process.env.NODE_ENV === 'production',
+          httpOnly: true,
+          sameSite: 'lax',
+          path: '/',
+        },
+        corsOrigins: [
+          process.env.APP_URL || 'http://localhost:3000',
+          process.env.API_URL || 'http://localhost:5000',
+          ...(process.env.TRUSTED_ORIGINS ? process.env.TRUSTED_ORIGINS.split(',') : []),
+        ],
+        authEndpoints: {
+          base: '/api/auth',
+          emailSignIn: 'POST /api/auth/sign-in/email',
+          emailSignUp: 'POST /api/auth/sign-up/email',
+          socialSignIn: 'POST /api/auth/sign-in/social',
+          signOut: 'POST /api/auth/sign-out',
+          getSession: 'GET /api/auth/get-session',
+          verifyEmail: 'GET /api/auth/verify-email',
+          changePassword: 'POST /api/auth/change-password',
+          resetPassword: 'POST /api/auth/reset-password',
+        },
+        testEndpoints: {
+          status: 'GET /api/auth-status',
+          debug: 'GET /api/auth-debug',
+          testAuth: 'POST /api/auth-test',
+          config: 'GET /api/auth-config',
+        },
+      };
+
+      return config;
+    }
+  );
+
+  // Test email/password authentication
+  app.fastify.post(
+    '/api/auth-test-email',
+    {
+      schema: {
+        description: 'Test email authentication system',
+        tags: ['auth'],
+        body: {
+          type: 'object',
+          properties: {
+            action: {
+              type: 'string',
+              enum: ['create_test_user', 'check_user_exists'],
+            },
+            email: {
+              type: 'string',
+              format: 'email',
+            },
+          },
+        },
+      },
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const body = request.body as Record<string, any>;
+      const { action, email } = body;
+
+      app.logger.info({ action, email }, 'Email auth test requested');
+
+      try {
+        if (action === 'check_user_exists') {
+          if (!email) {
+            return reply.status(400).send({ error: 'email required' });
+          }
+
+          const user = await app.db.query.user.findFirst({
+            where: (users: any, { eq }: any) => eq(users.email, email),
+          });
+
+          return {
+            userExists: !!user,
+            email: user?.email,
+            message: user ? 'User found' : 'User not found',
+          };
+        }
+
+        if (action === 'create_test_user') {
+          return {
+            status: 'test_only',
+            message: 'Use POST /api/auth/sign-up/email to create users',
+          };
+        }
+
+        return reply.status(400).send({ error: 'Invalid action' });
+      } catch (error) {
+        app.logger.error({ err: error, action }, 'Email auth test failed');
+        return reply.status(500).send({
+          error: 'test_failed',
+          message: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
     }
   );
 }

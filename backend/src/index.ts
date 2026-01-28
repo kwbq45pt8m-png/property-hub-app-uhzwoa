@@ -15,6 +15,28 @@ export const app = await createApplication(schema);
 // Export App type for use in route files
 export type App = typeof app;
 
+// Add global error handler for authentication requests
+app.fastify.setErrorHandler(async (error: any, request, reply) => {
+  const statusCode = typeof error?.statusCode === 'number' ? error.statusCode : 500;
+  const code = typeof error?.code === 'string' ? error.code : 'error';
+  const message = typeof error?.message === 'string' ? error.message : 'An error occurred';
+
+  app.logger.error(
+    {
+      err: error,
+      path: request.url,
+      method: request.method,
+      statusCode,
+    },
+    'Request error'
+  );
+
+  return reply.status(statusCode).send({
+    error: code,
+    message,
+  });
+});
+
 // Enable authentication and storage
 // By default, use the proxy-based OAuth (Google, Apple, etc.)
 // If custom credentials are provided via environment variables, use them instead
@@ -42,19 +64,57 @@ if (process.env.APPLE_CLIENT_ID && process.env.APPLE_CLIENT_SECRET) {
   app.logger.info('Using proxy-based Apple OAuth');
 }
 
-// Configure Better Auth with proper error handling and Apple OAuth support
+// Determine if we're in production
+const isProduction = process.env.NODE_ENV === 'production';
+const appUrl = process.env.APP_URL || 'http://localhost:3000';
+const apiUrl = process.env.API_URL || 'http://localhost:5000';
+
+// Configure Better Auth with comprehensive settings
 const authConfig: any = {
+  // Set base URL for auth endpoints
+  baseURL: apiUrl,
+
+  // Configure trusted origins for CORS
+  trustedOrigins: [
+    appUrl,
+    apiUrl,
+    ...(process.env.TRUSTED_ORIGINS ? process.env.TRUSTED_ORIGINS.split(',') : []),
+  ],
+
+  // Enable email/password authentication
+  emailAndPassword: {
+    enabled: true,
+  },
+
   // Ensure proper session handling for OAuth flows
   sessionConfig: {
     absoluteSessionTimeout: 30 * 24 * 60 * 60 * 1000, // 30 days
     inactiveSessionTimeout: 7 * 24 * 60 * 60 * 1000, // 7 days
     updateAge: 24 * 60 * 60 * 1000, // Update session every 24 hours
   },
+
+  // Configure cookies
+  session: {
+    cookieOptions: {
+      secure: isProduction, // Use secure cookies in production
+      httpOnly: true, // Prevent JavaScript access
+      sameSite: 'lax', // Allow cross-site cookie submission
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      path: '/',
+    },
+  },
+
   callbacks: {
     onError: async (ctx: any) => {
       app.logger.error(
-        { error: ctx.error, path: ctx.path, provider: ctx.provider },
-        'Authentication error occurred during OAuth flow'
+        {
+          error: ctx.error?.message,
+          code: ctx.error?.code,
+          path: ctx.path,
+          provider: ctx.provider,
+          status: ctx.error?.status,
+        },
+        'Authentication error occurred'
       );
       // Return a proper error response
       return {
@@ -76,10 +136,21 @@ const authConfig: any = {
   },
 };
 
-// Only add socialProviders if custom credentials are provided
-if (Object.keys(socialProviders).length > 0) {
-  authConfig.socialProviders = socialProviders;
-}
+// Add social providers
+authConfig.socialProviders = socialProviders;
+
+// Log auth configuration
+app.logger.info(
+  {
+    baseURL: authConfig.baseURL,
+    trustedOrigins: authConfig.trustedOrigins,
+    emailEnabled: authConfig.emailAndPassword?.enabled,
+    googleEnabled: !!authConfig.socialProviders.google,
+    appleEnabled: !!authConfig.socialProviders.apple,
+    secure: authConfig.session?.cookieOptions?.secure,
+  },
+  'Authentication configured'
+);
 
 app.withAuth(authConfig);
 app.withStorage();
