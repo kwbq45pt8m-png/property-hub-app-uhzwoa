@@ -15,6 +15,7 @@ import { colors } from "@/styles/commonStyles";
 import { useAuth } from "@/contexts/AuthContext";
 import { authenticatedGet } from "@/utils/api";
 import AdModal from "@/components/AdModal";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Chat {
   id: string;
@@ -32,6 +33,7 @@ interface Chat {
 export default function ChatsScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const { t } = useLanguage();
   
   const [chats, setChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(true);
@@ -111,7 +113,7 @@ export default function ChatsScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Chats</Text>
+        <Text style={styles.headerTitle}>{t('chats')}</Text>
       </View>
 
       {/* Chats List */}
@@ -127,8 +129,8 @@ export default function ChatsScreen() {
             size={64} 
             color={colors.textSecondary} 
           />
-          <Text style={styles.emptyText}>No conversations yet</Text>
-          <Text style={styles.emptySubtext}>Start chatting with property owners</Text>
+          <Text style={styles.emptyText}>{t('noChats')}</Text>
+          <Text style={styles.emptySubtext}>{t('startChatting')}</Text>
         </View>
       ) : (
         <ScrollView 

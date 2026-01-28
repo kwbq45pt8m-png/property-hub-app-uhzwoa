@@ -1,8 +1,7 @@
-
 {
   "expo": {
-    "name": "Hong Kong rental",
-    "slug": "hongkongrental",
+    "name": "Property Hub",
+    "slug": "Property Hub",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/natively-dark.png",
@@ -37,7 +36,7 @@
       "expo-router",
       "expo-web-browser"
     ],
-    "scheme": "hongkongrental",
+    "scheme": "Property Hub",
     "experiments": {
       "typedRoutes": true
     },

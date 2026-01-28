@@ -9,7 +9,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Platform,
-  Alert,
   Modal,
   Image,
   ImageSourcePropType,
@@ -22,6 +21,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { authenticatedPost, BACKEND_URL, getBearerToken } from "@/utils/api";
 import * as ImagePicker from "expo-image-picker";
 import AdModal from "@/components/AdModal";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const HK_DISTRICTS = [
   "Central and Western",
@@ -54,6 +54,7 @@ function resolveImageSource(source: string | number | ImageSourcePropType | unde
 export default function ListPropertyScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const { t } = useLanguage();
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -69,6 +70,13 @@ export default function ListPropertyScreen() {
   const [showDistrictPicker, setShowDistrictPicker] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showAdModal, setShowAdModal] = useState(false);
+  const [errorModalVisible, setErrorModalVisible] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const showError = (message: string) => {
+    setErrorMessage(message);
+    setErrorModalVisible(true);
+  };
 
   const handlePickPhotos = async () => {
     console.log("User tapped Add Photos button");
@@ -76,7 +84,7 @@ export default function ListPropertyScreen() {
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (!permissionResult.granted) {
-      Alert.alert("Permission Required", "Please allow access to your photo library to upload photos");
+      showError("Please allow access to your photo library to upload photos");
       return;
     }
 
@@ -110,6 +118,7 @@ export default function ListPropertyScreen() {
             type: `image/${fileType}`,
           } as any);
 
+          console.log("Uploading photo to:", `${BACKEND_URL}/api/upload/property-image`);
           const response = await fetch(`${BACKEND_URL}/api/upload/property-image`, {
             method: 'POST',
             headers: {
@@ -118,20 +127,24 @@ export default function ListPropertyScreen() {
             body: formData,
           });
 
+          console.log("Upload response status:", response.status);
+          
           if (!response.ok) {
-            throw new Error(`Upload failed: ${response.status}`);
+            const errorText = await response.text();
+            console.error("Upload error response:", errorText);
+            throw new Error(`Upload failed with status ${response.status}: ${errorText}`);
           }
 
           const data = await response.json();
           uploadedUrls.push(data.url);
-          console.log("Photo uploaded:", data.url);
+          console.log("Photo uploaded successfully:", data.url);
         }
 
         setPhotos([...photos, ...uploadedUrls]);
         console.log("✅ All photos uploaded successfully!");
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error uploading photos:", error);
-        Alert.alert("Upload Error", "Failed to upload photos. Please try again.");
+        showError(t('uploadPhotosFailed') + " " + (error.message || ""));
       } finally {
         setUploadingPhotos(false);
       }
@@ -150,7 +163,7 @@ export default function ListPropertyScreen() {
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (!permissionResult.granted) {
-      Alert.alert("Permission Required", "Please allow access to your photo library to upload videos");
+      showError("Please allow access to your photo library to upload videos");
       return;
     }
 
@@ -181,6 +194,7 @@ export default function ListPropertyScreen() {
           type: `video/${fileType}`,
         } as any);
 
+        console.log("Uploading video to:", `${BACKEND_URL}/api/upload/virtual-tour-video`);
         const response = await fetch(`${BACKEND_URL}/api/upload/virtual-tour-video`, {
           method: 'POST',
           headers: {
@@ -189,16 +203,20 @@ export default function ListPropertyScreen() {
           body: formData,
         });
 
+        console.log("Upload response status:", response.status);
+
         if (!response.ok) {
-          throw new Error(`Upload failed: ${response.status}`);
+          const errorText = await response.text();
+          console.error("Upload error response:", errorText);
+          throw new Error(`Upload failed with status ${response.status}: ${errorText}`);
         }
 
         const data = await response.json();
         setVirtualTourVideoUrl(data.url);
         console.log("✅ Video uploaded successfully:", data.url);
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error uploading video:", error);
-        Alert.alert("Upload Error", "Failed to upload video. Please try again.");
+        showError(t('uploadVideoFailed') + " " + (error.message || ""));
       } finally {
         setUploadingVideo(false);
       }
@@ -231,27 +249,27 @@ export default function ListPropertyScreen() {
     const districtTrimmed = district.trim();
 
     if (!titleTrimmed) {
-      Alert.alert("Missing Information", "Please enter a property title");
+      showError(t('enterTitle'));
       return;
     }
 
     if (!descriptionTrimmed) {
-      Alert.alert("Missing Information", "Please enter a property description");
+      showError(t('enterDescription'));
       return;
     }
 
     if (!priceTrimmed) {
-      Alert.alert("Missing Information", "Please enter a monthly rent price");
+      showError(t('enterPrice'));
       return;
     }
 
     if (!sizeTrimmed) {
-      Alert.alert("Missing Information", "Please enter the property size");
+      showError(t('enterSize'));
       return;
     }
 
     if (!districtTrimmed) {
-      Alert.alert("Missing Information", "Please select a district");
+      showError(t('selectDistrictError'));
       return;
     }
 
@@ -286,24 +304,24 @@ export default function ListPropertyScreen() {
         setShowSuccessModal(false);
         router.back();
       }, 2000);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error listing property:", error);
-      Alert.alert(
-        "Error",
-        "Failed to list property. Please try again."
-      );
+      showError(t('errorListingProperty') + " " + (error.message || ""));
     } finally {
       setLoading(false);
     }
   };
 
-  const districtDisplay = district || "Select District";
+  const districtDisplay = district || t('selectDistrict');
+  const listPropertyTitle = t('listProperty');
+  const listYourPropertyText = t('listYourProperty');
+  const fillDetailsText = t('fillDetails');
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <Stack.Screen
         options={{
-          title: "List Property",
+          title: listPropertyTitle,
           headerShown: true,
           headerBackTitle: "Back",
         }}
@@ -315,16 +333,16 @@ export default function ListPropertyScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>List Your Property</Text>
+          <Text style={styles.headerTitle}>{listYourPropertyText}</Text>
           <Text style={styles.headerSubtitle}>
-            Fill in the details to list your property for rent
+            {fillDetailsText}
           </Text>
         </View>
 
         <View style={styles.form}>
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Property Title</Text>
-            <Text style={styles.required}>*</Text>
+            <Text style={styles.label}>{t('propertyTitle')}</Text>
+            <Text style={styles.required}>{t('required')}</Text>
             <TextInput
               style={styles.input}
               placeholder="e.g., Spacious 2BR Apartment in Central"
@@ -335,8 +353,8 @@ export default function ListPropertyScreen() {
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Description</Text>
-            <Text style={styles.required}>*</Text>
+            <Text style={styles.label}>{t('propertyDescription')}</Text>
+            <Text style={styles.required}>{t('required')}</Text>
             <TextInput
               style={[styles.input, styles.textArea]}
               placeholder="Describe your property, amenities, nearby facilities..."
@@ -351,8 +369,8 @@ export default function ListPropertyScreen() {
 
           <View style={styles.formRow}>
             <View style={[styles.formGroup, styles.formGroupHalf]}>
-              <Text style={styles.label}>Monthly Rent (HK$)</Text>
-              <Text style={styles.required}>*</Text>
+              <Text style={styles.label}>{t('monthlyRentHKD')}</Text>
+              <Text style={styles.required}>{t('required')}</Text>
               <TextInput
                 style={styles.input}
                 placeholder="e.g., 15000"
@@ -364,8 +382,8 @@ export default function ListPropertyScreen() {
             </View>
 
             <View style={[styles.formGroup, styles.formGroupHalf]}>
-              <Text style={styles.label}>Size (sq ft)</Text>
-              <Text style={styles.required}>*</Text>
+              <Text style={styles.label}>{t('sizeSqFt')}</Text>
+              <Text style={styles.required}>{t('required')}</Text>
               <TextInput
                 style={styles.input}
                 placeholder="e.g., 600"
@@ -378,8 +396,8 @@ export default function ListPropertyScreen() {
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>District</Text>
-            <Text style={styles.required}>*</Text>
+            <Text style={styles.label}>{t('district')}</Text>
+            <Text style={styles.required}>{t('required')}</Text>
             <TouchableOpacity
               style={styles.pickerButton}
               onPress={() => setShowDistrictPicker(true)}
@@ -402,7 +420,7 @@ export default function ListPropertyScreen() {
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Equipment & Amenities</Text>
+            <Text style={styles.label}>{t('equipment')}</Text>
             <TextInput
               style={styles.input}
               placeholder="e.g., Air conditioning, Washing machine, WiFi"
@@ -413,7 +431,7 @@ export default function ListPropertyScreen() {
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Property Photos</Text>
+            <Text style={styles.label}>{t('propertyPhotos')}</Text>
             <TouchableOpacity
               style={styles.uploadButton}
               onPress={handlePickPhotos}
@@ -430,7 +448,7 @@ export default function ListPropertyScreen() {
                     size={24}
                     color={colors.primary}
                   />
-                  <Text style={styles.uploadButtonText}>Add Photos</Text>
+                  <Text style={styles.uploadButtonText}>{t('addPhotos')}</Text>
                 </React.Fragment>
               )}
             </TouchableOpacity>
@@ -465,7 +483,7 @@ export default function ListPropertyScreen() {
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Virtual Tour Video (Optional)</Text>
+            <Text style={styles.label}>{t('virtualTourVideo')}</Text>
             <TouchableOpacity
               style={styles.uploadButton}
               onPress={handlePickVideo}
@@ -483,7 +501,7 @@ export default function ListPropertyScreen() {
                     color={colors.primary}
                   />
                   <Text style={styles.uploadButtonText}>
-                    {virtualTourVideoUrl ? "Video Added" : "Add Virtual Tour Video"}
+                    {virtualTourVideoUrl ? t('videoAdded') : t('addVirtualTourVideo')}
                   </Text>
                 </React.Fragment>
               )}
@@ -498,7 +516,7 @@ export default function ListPropertyScreen() {
                     size={32}
                     color={colors.primary}
                   />
-                  <Text style={styles.videoPreviewText}>Virtual tour video added</Text>
+                  <Text style={styles.videoPreviewText}>{t('virtualTourVideoAdded')}</Text>
                 </View>
                 <TouchableOpacity
                   style={styles.removeVideoButton}
@@ -510,7 +528,7 @@ export default function ListPropertyScreen() {
                     size={20}
                     color="#FF3B30"
                   />
-                  <Text style={styles.removeVideoButtonText}>Remove</Text>
+                  <Text style={styles.removeVideoButtonText}>{t('remove')}</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -532,7 +550,7 @@ export default function ListPropertyScreen() {
                   size={20}
                   color="#FFFFFF"
                 />
-                <Text style={styles.submitButtonText}>List Property</Text>
+                <Text style={styles.submitButtonText}>{t('listPropertyButton')}</Text>
               </React.Fragment>
             )}
           </TouchableOpacity>
@@ -548,7 +566,7 @@ export default function ListPropertyScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select District</Text>
+              <Text style={styles.modalTitle}>{t('selectDistrict')}</Text>
               <TouchableOpacity onPress={() => setShowDistrictPicker(false)}>
                 <IconSymbol
                   ios_icon_name="xmark"
@@ -612,10 +630,31 @@ export default function ListPropertyScreen() {
               size={64}
               color={colors.primary}
             />
-            <Text style={styles.successModalTitle}>Success!</Text>
+            <Text style={styles.successModalTitle}>{t('success')}</Text>
             <Text style={styles.successModalText}>
-              Your property has been listed successfully
+              {t('propertyListedSuccess')}
             </Text>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Error Modal */}
+      <Modal
+        visible={errorModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setErrorModalVisible(false)}
+      >
+        <View style={styles.errorModalOverlay}>
+          <View style={styles.errorModalContent}>
+            <Text style={styles.errorModalTitle}>{t('uploadError')}</Text>
+            <Text style={styles.errorModalMessage}>{errorMessage}</Text>
+            <TouchableOpacity
+              style={styles.errorModalButton}
+              onPress={() => setErrorModalVisible(false)}
+            >
+              <Text style={styles.errorModalButtonText}>OK</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -878,5 +917,43 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#FF3B30',
+  },
+  errorModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorModalContent: {
+    backgroundColor: colors.background,
+    borderRadius: 12,
+    padding: 24,
+    width: '80%',
+    maxWidth: 400,
+  },
+  errorModalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 12,
+    textAlign: 'center',
+    color: colors.text,
+  },
+  errorModalMessage: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    marginBottom: 24,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  errorModalButton: {
+    backgroundColor: colors.primary,
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  errorModalButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

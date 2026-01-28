@@ -17,6 +17,7 @@ import { IconSymbol } from "@/components/IconSymbol";
 import { colors } from "@/styles/commonStyles";
 import { useAuth } from "@/contexts/AuthContext";
 import { authenticatedGet } from "@/utils/api";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Property {
   id: string;
@@ -41,6 +42,7 @@ function resolveImageSource(source: string | number | ImageSourcePropType | unde
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, signOut } = useAuth();
+  const { t } = useLanguage();
   
   const [myListings, setMyListings] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
@@ -133,7 +135,7 @@ export default function ProfileScreen() {
       >
         {/* Listed Properties Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>My Listed Properties</Text>
+          <Text style={styles.sectionTitle}>{t('myListings')}</Text>
           
           {loading ? (
             <View style={styles.loadingContainer}>
@@ -147,7 +149,7 @@ export default function ProfileScreen() {
                 size={64} 
                 color={colors.textSecondary} 
               />
-              <Text style={styles.emptyText}>No properties listed yet</Text>
+              <Text style={styles.emptyText}>{t('noListings')}</Text>
               <Text style={styles.emptySubtext}>Start listing your properties to rent</Text>
               <TouchableOpacity
                 style={styles.listButton}
@@ -159,7 +161,7 @@ export default function ProfileScreen() {
                   size={20} 
                   color="#FFFFFF" 
                 />
-                <Text style={styles.listButtonText}>List Property</Text>
+                <Text style={styles.listButtonText}>{t('listProperty')}</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -213,7 +215,7 @@ export default function ProfileScreen() {
 
         {/* Recent Searches Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recent Searches</Text>
+          <Text style={styles.sectionTitle}>{t('recentSearches')}</Text>
           <View style={styles.emptyContainer}>
             <IconSymbol 
               ios_icon_name="clock" 
@@ -221,7 +223,7 @@ export default function ProfileScreen() {
               size={64} 
               color={colors.textSecondary} 
             />
-            <Text style={styles.emptyText}>No recent searches</Text>
+            <Text style={styles.emptyText}>{t('noSearches')}</Text>
             <Text style={styles.emptySubtext}>Your search history will appear here</Text>
           </View>
         </View>
@@ -238,20 +240,20 @@ export default function ProfileScreen() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Sign Out</Text>
-            <Text style={styles.modalMessage}>Are you sure you want to sign out?</Text>
+            <Text style={styles.modalTitle}>{t('signOut')}</Text>
+            <Text style={styles.modalMessage}>{t('confirmSignOut')}</Text>
             <View style={styles.modalActions}>
               <TouchableOpacity
                 style={styles.modalCancelButton}
                 onPress={() => setShowSignOutModal(false)}
               >
-                <Text style={styles.modalCancelText}>Cancel</Text>
+                <Text style={styles.modalCancelText}>{t('cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.modalConfirmButton}
                 onPress={handleSignOut}
               >
-                <Text style={styles.modalConfirmText}>Sign Out</Text>
+                <Text style={styles.modalConfirmText}>{t('signOut')}</Text>
               </TouchableOpacity>
             </View>
           </View>

@@ -16,6 +16,7 @@ import { IconSymbol } from "@/components/IconSymbol";
 import { colors } from "@/styles/commonStyles";
 import { useAuth } from "@/contexts/AuthContext";
 import { authenticatedGet, authenticatedPost } from "@/utils/api";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Message {
   id: string;
@@ -37,6 +38,7 @@ interface Chat {
 export default function ChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
+  const { t } = useLanguage();
   const scrollViewRef = useRef<ScrollView>(null);
   
   const [messages, setMessages] = useState<Message[]>([]);
@@ -191,7 +193,7 @@ export default function ChatScreen() {
             <View style={styles.inputContainer}>
               <TextInput
                 style={styles.input}
-                placeholder="Type a message..."
+                placeholder={t('typeMessage')}
                 placeholderTextColor={colors.textSecondary}
                 value={messageText}
                 onChangeText={setMessageText}

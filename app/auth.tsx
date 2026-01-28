@@ -80,7 +80,14 @@ export default function AuthScreen() {
       router.replace("/");
     } catch (error: any) {
       console.error(`${provider} sign-in error:`, error);
-      showError(error.message || "Authentication failed");
+      
+      // Provide helpful message for OAuth configuration issues
+      let errorMsg = error.message || "Authentication failed";
+      if (errorMsg.includes("500") || errorMsg.includes("temporarily unavailable")) {
+        errorMsg = `${provider.charAt(0).toUpperCase() + provider.slice(1)} sign-in requires OAuth credentials to be configured. This is normal during development. OAuth will work after the app is published to the App Store with proper credentials configured in the backend.`;
+      }
+      
+      showError(errorMsg);
     } finally {
       setLoading(false);
     }

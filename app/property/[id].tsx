@@ -19,6 +19,7 @@ import { colors } from "@/styles/commonStyles";
 import { useAuth } from "@/contexts/AuthContext";
 import { authenticatedGet } from "@/utils/api";
 import AdModal from "@/components/AdModal";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const { width } = Dimensions.get('window');
 
@@ -47,6 +48,7 @@ export default function PropertyDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { user } = useAuth();
+  const { t } = useLanguage();
   
   const [property, setProperty] = useState<Property | null>(null);
   const [loading, setLoading] = useState(true);
@@ -113,9 +115,10 @@ export default function PropertyDetailScreen() {
   };
 
   if (loading) {
+    const loadingText = t('loading');
     return (
       <>
-        <Stack.Screen options={{ title: 'Loading...' }} />
+        <Stack.Screen options={{ title: loadingText }} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
@@ -124,9 +127,10 @@ export default function PropertyDetailScreen() {
   }
 
   if (!property) {
+    const notFoundText = t('propertyNotFound');
     return (
       <>
-        <Stack.Screen options={{ title: 'Property Not Found' }} />
+        <Stack.Screen options={{ title: notFoundText }} />
         <View style={styles.errorContainer}>
           <IconSymbol 
             ios_icon_name="exclamationmark.triangle" 
@@ -134,7 +138,7 @@ export default function PropertyDetailScreen() {
             size={64} 
             color={colors.error} 
           />
-          <Text style={styles.errorText}>Property not found</Text>
+          <Text style={styles.errorText}>{notFoundText}</Text>
         </View>
       </>
     );
@@ -149,6 +153,13 @@ export default function PropertyDetailScreen() {
   const sizeText = `${property.size} sq ft`;
   const isOwner = user?.id === property.ownerId;
   const hasVirtualTour = !!property.virtualTourUrl;
+  
+  const monthlyRentLabel = t('monthlyRent');
+  const sizeLabel = t('size');
+  const descriptionLabel = t('description');
+  const equipmentLabel = t('equipmentAmenities');
+  const virtualTourLabel = t('virtualTour');
+  const contactOwnerText = t('contactOwner');
 
   return (
     <>
@@ -204,25 +215,25 @@ export default function PropertyDetailScreen() {
             <View style={styles.statsRow}>
               <View style={styles.statItem}>
                 <Text style={styles.statValue}>{priceText}</Text>
-                <Text style={styles.statLabel}>Monthly Rent</Text>
+                <Text style={styles.statLabel}>{monthlyRentLabel}</Text>
               </View>
               <View style={styles.statDivider} />
               <View style={styles.statItem}>
                 <Text style={styles.statValue}>{sizeText}</Text>
-                <Text style={styles.statLabel}>Size</Text>
+                <Text style={styles.statLabel}>{sizeLabel}</Text>
               </View>
             </View>
 
             {/* Description */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Description</Text>
+              <Text style={styles.sectionTitle}>{descriptionLabel}</Text>
               <Text style={styles.description}>{property.description}</Text>
             </View>
 
             {/* Equipment */}
             {equipmentList.length > 0 && (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Equipment & Amenities</Text>
+                <Text style={styles.sectionTitle}>{equipmentLabel}</Text>
                 <View style={styles.equipmentList}>
                   {equipmentList.map((item, index) => (
                     <View key={index} style={styles.equipmentItem}>
@@ -242,7 +253,7 @@ export default function PropertyDetailScreen() {
             {/* Virtual Tour Video */}
             {hasVirtualTour && (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Virtual Tour</Text>
+                <Text style={styles.sectionTitle}>{virtualTourLabel}</Text>
                 <View style={styles.videoContainer}>
                   <VideoView
                     player={videoPlayer}
@@ -284,7 +295,7 @@ export default function PropertyDetailScreen() {
                 size={20} 
                 color="#FFFFFF" 
               />
-              <Text style={styles.contactButtonText}>Contact Owner</Text>
+              <Text style={styles.contactButtonText}>{contactOwnerText}</Text>
             </TouchableOpacity>
           </View>
         )}
