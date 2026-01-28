@@ -1,7 +1,8 @@
+
 {
   "expo": {
     "name": "Property Hub",
-    "slug": "Property Hub",
+    "slug": "propertyhub",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/natively-dark.png",
@@ -36,7 +37,7 @@
       "expo-router",
       "expo-web-browser"
     ],
-    "scheme": "Property Hub",
+    "scheme": "propertyhub",
     "experiments": {
       "typedRoutes": true
     },
