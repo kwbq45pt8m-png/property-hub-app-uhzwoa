@@ -20,6 +20,7 @@ import { colors } from "@/styles/commonStyles";
 import { useAuth } from "@/contexts/AuthContext";
 import { authenticatedPost, BACKEND_URL, getBearerToken } from "@/utils/api";
 import * as ImagePicker from "expo-image-picker";
+import * as ImageManipulator from "expo-image-manipulator";
 import AdModal from "@/components/AdModal";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -103,22 +104,36 @@ export default function ListPropertyScreen() {
         const uploadedUrls: string[] = [];
 
         for (const asset of result.assets) {
+          console.log("Compressing image before upload...");
+          
+          // Compress and resize the image to reduce file size
+          const manipulatedImage = await ImageManipulator.manipulateAsync(
+            asset.uri,
+            [
+              { resize: { width: 1200 } }, // Resize to max width of 1200px (maintains aspect ratio)
+            ],
+            {
+              compress: 0.7, // Compress to 70% quality
+              format: ImageManipulator.SaveFormat.JPEG,
+            }
+          );
+
+          console.log("Image compressed successfully");
+
           const token = await getBearerToken();
           if (!token) {
             throw new Error("Authentication token not found");
           }
 
           const formData = new FormData();
-          const uriParts = asset.uri.split('.');
-          const fileType = uriParts[uriParts.length - 1];
-
+          
           formData.append('image', {
-            uri: asset.uri,
-            name: `photo.${fileType}`,
-            type: `image/${fileType}`,
+            uri: manipulatedImage.uri,
+            name: 'photo.jpg',
+            type: 'image/jpeg',
           } as any);
 
-          console.log("Uploading photo to:", `${BACKEND_URL}/api/upload/property-image`);
+          console.log("Uploading compressed photo to:", `${BACKEND_URL}/api/upload/property-image`);
           const response = await fetch(`${BACKEND_URL}/api/upload/property-image`, {
             method: 'POST',
             headers: {
@@ -132,6 +147,11 @@ export default function ListPropertyScreen() {
           if (!response.ok) {
             const errorText = await response.text();
             console.error("Upload error response:", errorText);
+            
+            if (response.status === 413) {
+              throw new Error("Image file is too large. Please try a smaller image or contact support.");
+            }
+            
             throw new Error(`Upload failed with status ${response.status}: ${errorText}`);
           }
 
@@ -170,7 +190,7 @@ export default function ListPropertyScreen() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: "videos",
       allowsMultipleSelection: false,
-      quality: 0.8,
+      quality: 0.5, // Reduced quality for videos to prevent 413 errors
     });
 
     if (!result.canceled && result.assets.length > 0) {
@@ -208,6 +228,11 @@ export default function ListPropertyScreen() {
         if (!response.ok) {
           const errorText = await response.text();
           console.error("Upload error response:", errorText);
+          
+          if (response.status === 413) {
+            throw new Error("Video file is too large. Please try a shorter video or contact support.");
+          }
+          
           throw new Error(`Upload failed with status ${response.status}: ${errorText}`);
         }
 
