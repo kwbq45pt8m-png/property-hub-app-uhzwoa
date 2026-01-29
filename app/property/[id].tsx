@@ -67,6 +67,8 @@ export default function PropertyDetailScreen() {
       console.log("Fetching property from:", `/api/properties/${id}`);
       const data = await authenticatedGet<Property>(`/api/properties/${id}`);
       console.log("Property loaded:", data);
+      console.log("Property photos (signed URLs):", data.photos?.slice(0, 1));
+      console.log("Property virtualTourUrl (signed URL):", data.virtualTourUrl);
       setProperty(data);
     } catch (error) {
       console.error("Error loading property:", error);

@@ -63,8 +63,10 @@ export default function ListPropertyScreen() {
   const [size, setSize] = useState("");
   const [district, setDistrict] = useState("");
   const [equipment, setEquipment] = useState("");
-  const [photos, setPhotos] = useState<string[]>([]);
-  const [virtualTourVideoUrl, setVirtualTourVideoUrl] = useState("");
+  const [photos, setPhotos] = useState<string[]>([]); // Local URIs for preview
+  const [photoKeys, setPhotoKeys] = useState<string[]>([]); // S3 keys to send to backend
+  const [virtualTourVideoUrl, setVirtualTourVideoUrl] = useState(""); // Local URI for preview
+  const [virtualTourVideoKey, setVirtualTourVideoKey] = useState(""); // S3 key to send to backend
   const [loading, setLoading] = useState(false);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
   const [uploadingVideo, setUploadingVideo] = useState(false);
@@ -101,6 +103,7 @@ export default function ListPropertyScreen() {
       setUploadingPhotos(true);
 
       try {
+        const uploadedKeys: string[] = [];
         const uploadedUrls: string[] = [];
 
         for (const asset of result.assets) {
@@ -165,10 +168,19 @@ export default function ListPropertyScreen() {
           }
 
           const data = await uploadResponse.json();
-          uploadedUrls.push(data.url);
-          console.log("Photo uploaded successfully:", data.url);
+          console.log("Upload response data:", data);
+          // Backend now returns { key, filename } instead of { url, filename }
+          if (!data.key) {
+            console.error("Upload response missing 'key' field:", data);
+            throw new Error("Invalid upload response - missing S3 key");
+          }
+          uploadedKeys.push(data.key);
+          // For preview, we'll use the local URI temporarily
+          uploadedUrls.push(manipulatedImage.uri);
+          console.log("Photo uploaded successfully, S3 key:", data.key);
         }
 
+        setPhotoKeys([...photoKeys, ...uploadedKeys]);
         setPhotos([...photos, ...uploadedUrls]);
         console.log("✅ All photos uploaded successfully!");
       } catch (error: any) {
@@ -184,7 +196,9 @@ export default function ListPropertyScreen() {
   const handleRemovePhoto = (index: number) => {
     console.log("Removing photo at index:", index);
     const newPhotos = photos.filter((_, i) => i !== index);
+    const newPhotoKeys = photoKeys.filter((_, i) => i !== index);
     setPhotos(newPhotos);
+    setPhotoKeys(newPhotoKeys);
   };
 
   const handlePickVideo = async () => {
@@ -256,8 +270,15 @@ export default function ListPropertyScreen() {
         }
 
         const data = await uploadResponse.json();
-        setVirtualTourVideoUrl(data.url);
-        console.log("✅ Video uploaded successfully:", data.url);
+        console.log("Video upload response data:", data);
+        // Backend now returns { key, filename } instead of { url, filename }
+        if (!data.key) {
+          console.error("Upload response missing 'key' field:", data);
+          throw new Error("Invalid upload response - missing S3 key");
+        }
+        setVirtualTourVideoKey(data.key);
+        setVirtualTourVideoUrl(asset.uri); // For display purposes
+        console.log("✅ Video uploaded successfully, S3 key:", data.key);
       } catch (error: any) {
         console.error("Error uploading video:", error);
         const errorMsg = error.message || "";
@@ -271,6 +292,7 @@ export default function ListPropertyScreen() {
   const handleRemoveVideo = () => {
     console.log("Removing virtual tour video");
     setVirtualTourVideoUrl("");
+    setVirtualTourVideoKey("");
   };
 
   const handleSubmitClick = () => {
@@ -325,8 +347,8 @@ export default function ListPropertyScreen() {
         price: priceTrimmed,
         size: sizeTrimmed,
         district: districtTrimmed,
-        photosCount: photos.length,
-        hasVideo: !!virtualTourVideoUrl,
+        photosCount: photoKeys.length,
+        hasVideo: !!virtualTourVideoKey,
       });
 
       const propertyData = {
@@ -336,9 +358,15 @@ export default function ListPropertyScreen() {
         size: parseInt(sizeTrimmed, 10),
         district: districtTrimmed,
         equipment: equipment.trim(),
-        virtualTourUrl: virtualTourVideoUrl.trim() || undefined,
-        photos: photos,
+        virtualTourUrl: virtualTourVideoKey.trim() || undefined,
+        photos: photoKeys, // Send S3 keys instead of URLs
       };
+
+      console.log("Submitting property data:", {
+        ...propertyData,
+        photos: `[${propertyData.photos.length} S3 keys]`,
+        photoKeys: propertyData.photos,
+      });
 
       await authenticatedPost("/api/properties", propertyData);
 

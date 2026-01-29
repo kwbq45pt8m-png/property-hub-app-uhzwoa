@@ -135,6 +135,14 @@ export default function HomeScreen() {
       console.log("Fetching properties from:", url);
       const data = await authenticatedGet<Property[]>(url);
       console.log("Properties loaded:", data.length);
+      
+      // Log sample property to verify signed URLs
+      if (data.length > 0) {
+        const sampleProperty = data[0];
+        console.log("Sample property photos:", sampleProperty.photos?.slice(0, 1));
+        console.log("Sample property virtualTourUrl:", sampleProperty.virtualTourUrl);
+      }
+      
       setProperties(data);
     } catch (error) {
       console.error("Error loading properties:", error);

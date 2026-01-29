@@ -61,6 +61,14 @@ export default function ProfileScreen() {
       console.log("Fetching user listings from:", "/api/my-listings");
       const data = await authenticatedGet<Property[]>("/api/my-listings");
       console.log("User listings loaded:", data.length);
+      
+      // Log sample listing to verify signed URLs
+      if (data.length > 0) {
+        const sampleListing = data[0];
+        console.log("Sample listing photos:", sampleListing.photos?.slice(0, 1));
+        console.log("Sample listing virtualTourUrl:", sampleListing.virtualTourUrl);
+      }
+      
       setMyListings(data);
     } catch (error) {
       console.error("Error loading user listings:", error);
