@@ -183,14 +183,23 @@ export default function EditPropertyScreen() {
 
           const formData = new FormData();
           
-          formData.append('image', {
-            uri: manipulatedImage.uri,
-            name: 'photo.jpg',
-            type: 'image/jpeg',
-          } as any);
+          // Platform-specific file handling for Web vs Native
+          if (Platform.OS === 'web') {
+            // Web: Fetch the blob and append as File
+            const response = await fetch(manipulatedImage.uri);
+            const blob = await response.blob();
+            formData.append('image', blob, 'photo.jpg');
+          } else {
+            // Native: Use React Native format
+            formData.append('image', {
+              uri: manipulatedImage.uri,
+              name: 'photo.jpg',
+              type: 'image/jpeg',
+            } as any);
+          }
 
           console.log("Uploading compressed photo to:", `${BACKEND_URL}/api/upload/property-image`);
-          const response = await fetch(`${BACKEND_URL}/api/upload/property-image`, {
+          const uploadResponse = await fetch(`${BACKEND_URL}/api/upload/property-image`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${token}`,
@@ -198,20 +207,20 @@ export default function EditPropertyScreen() {
             body: formData,
           });
 
-          console.log("Upload response status:", response.status);
+          console.log("Upload response status:", uploadResponse.status);
           
-          if (!response.ok) {
-            const errorText = await response.text();
+          if (!uploadResponse.ok) {
+            const errorText = await uploadResponse.text();
             console.error("Upload error response:", errorText);
             
-            if (response.status === 413) {
+            if (uploadResponse.status === 413) {
               throw new Error(t('imageTooLarge'));
             }
             
-            throw new Error(`Upload failed with status ${response.status}: ${errorText}`);
+            throw new Error(`Upload failed with status ${uploadResponse.status}: ${errorText}`);
           }
 
-          const data = await response.json();
+          const data = await uploadResponse.json();
           uploadedUrls.push(data.url);
           console.log("Photo uploaded successfully:", data.url);
         }
@@ -220,7 +229,8 @@ export default function EditPropertyScreen() {
         console.log("✅ All photos uploaded successfully!");
       } catch (error: any) {
         console.error("Error uploading photos:", error);
-        showError(t('uploadPhotosFailed') + " " + (error.message || ""));
+        const errorMsg = error.message || "";
+        showError(`${t('uploadPhotosFailed')} ${errorMsg}`);
       } finally {
         setUploadingPhotos(false);
       }
@@ -264,14 +274,23 @@ export default function EditPropertyScreen() {
         const uriParts = asset.uri.split('.');
         const fileType = uriParts[uriParts.length - 1];
 
-        formData.append('video', {
-          uri: asset.uri,
-          name: `video.${fileType}`,
-          type: `video/${fileType}`,
-        } as any);
+        // Platform-specific file handling for Web vs Native
+        if (Platform.OS === 'web') {
+          // Web: Fetch the blob and append as File
+          const response = await fetch(asset.uri);
+          const blob = await response.blob();
+          formData.append('video', blob, `video.${fileType}`);
+        } else {
+          // Native: Use React Native format
+          formData.append('video', {
+            uri: asset.uri,
+            name: `video.${fileType}`,
+            type: `video/${fileType}`,
+          } as any);
+        }
 
         console.log("Uploading video to:", `${BACKEND_URL}/api/upload/virtual-tour-video`);
-        const response = await fetch(`${BACKEND_URL}/api/upload/virtual-tour-video`, {
+        const uploadResponse = await fetch(`${BACKEND_URL}/api/upload/virtual-tour-video`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -279,25 +298,26 @@ export default function EditPropertyScreen() {
           body: formData,
         });
 
-        console.log("Upload response status:", response.status);
+        console.log("Upload response status:", uploadResponse.status);
 
-        if (!response.ok) {
-          const errorText = await response.text();
+        if (!uploadResponse.ok) {
+          const errorText = await uploadResponse.text();
           console.error("Upload error response:", errorText);
           
-          if (response.status === 413) {
+          if (uploadResponse.status === 413) {
             throw new Error(t('videoTooLarge'));
           }
           
-          throw new Error(`Upload failed with status ${response.status}: ${errorText}`);
+          throw new Error(`Upload failed with status ${uploadResponse.status}: ${errorText}`);
         }
 
-        const data = await response.json();
+        const data = await uploadResponse.json();
         setVirtualTourVideoUrl(data.url);
         console.log("✅ Video uploaded successfully:", data.url);
       } catch (error: any) {
         console.error("Error uploading video:", error);
-        showError(t('uploadVideoFailed') + " " + (error.message || ""));
+        const errorMsg = error.message || "";
+        showError(`${t('uploadVideoFailed')} ${errorMsg}`);
       } finally {
         setUploadingVideo(false);
       }
@@ -388,7 +408,8 @@ export default function EditPropertyScreen() {
       }, 2000);
     } catch (error: any) {
       console.error("Error updating property:", error);
-      showError(t('errorUpdatingProperty') + " " + (error.message || ""));
+      const errorMsg = error.message || "";
+      showError(`${t('errorUpdatingProperty')} ${errorMsg}`);
     } finally {
       setUpdating(false);
     }
@@ -416,7 +437,8 @@ export default function EditPropertyScreen() {
       }, 1500);
     } catch (error: any) {
       console.error("Error deleting property:", error);
-      showError(t('errorDeletingProperty') + " " + (error.message || ""));
+      const errorMsg = error.message || "";
+      showError(`${t('errorDeletingProperty')} ${errorMsg}`);
     } finally {
       setDeleting(false);
     }
@@ -680,7 +702,6 @@ export default function EditPropertyScreen() {
             )}
           </TouchableOpacity>
 
-          {/* Delete Button */}
           <TouchableOpacity
             style={[styles.deleteButton, deleting && styles.deleteButtonDisabled]}
             onPress={handleDeleteClick}
@@ -704,7 +725,6 @@ export default function EditPropertyScreen() {
         </View>
       </ScrollView>
 
-      {/* District Picker Modal */}
       <Modal
         visible={showDistrictPicker}
         animationType="slide"
@@ -765,7 +785,6 @@ export default function EditPropertyScreen() {
         </View>
       </Modal>
 
-      {/* Success Modal */}
       <Modal
         visible={showSuccessModal}
         animationType="fade"
@@ -787,7 +806,6 @@ export default function EditPropertyScreen() {
         </View>
       </Modal>
 
-      {/* Delete Confirmation Modal */}
       <Modal
         visible={showDeleteModal}
         animationType="fade"
@@ -816,7 +834,6 @@ export default function EditPropertyScreen() {
         </View>
       </Modal>
 
-      {/* Error Modal */}
       <Modal
         visible={errorModalVisible}
         transparent
