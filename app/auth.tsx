@@ -39,6 +39,7 @@ export default function AuthScreen() {
   }
 
   const showError = (message: string) => {
+    console.log("Showing error to user:", message);
     setErrorMessage(message);
     setErrorModalVisible(true);
   };
@@ -65,18 +66,35 @@ export default function AuthScreen() {
       }
     } catch (error: any) {
       console.error("Auth error caught in handleEmailAuth:", error);
+      console.error("Error details:", {
+        message: error.message,
+        status: error.status,
+        response: error.response,
+      });
       
-      // Provide more helpful error messages
-      let errorMsg = error.message || "Authentication failed";
+      // Extract error message from various possible error formats
+      let errorMsg = "Authentication failed. Please try again.";
       
-      if (errorMsg.includes("403")) {
-        errorMsg = "Authentication is temporarily unavailable. The server is being configured. Please try again in a moment.";
-      } else if (errorMsg.includes("401")) {
+      // Check if error has a message property
+      if (error.message) {
+        errorMsg = error.message;
+      }
+      
+      // Check for specific status codes
+      if (error.status === 400 || errorMsg.includes("400")) {
+        errorMsg = mode === "signin" 
+          ? "Invalid email or password. Please check your credentials and try again."
+          : "Unable to create account. Please check your information and try again.";
+      } else if (error.status === 401 || errorMsg.includes("401")) {
         errorMsg = mode === "signin" 
           ? "Invalid email or password. Please check your credentials and try again."
           : "Unable to create account. This email may already be registered.";
-      } else if (errorMsg.includes("network") || errorMsg.includes("fetch")) {
+      } else if (error.status === 403 || errorMsg.includes("403")) {
+        errorMsg = "Authentication is temporarily unavailable. The server is being configured. Please try again in a moment.";
+      } else if (errorMsg.includes("network") || errorMsg.includes("fetch") || errorMsg.includes("Failed to fetch")) {
         errorMsg = "Network error. Please check your internet connection and try again.";
+      } else if (errorMsg.includes("Invalid credentials") || errorMsg.includes("invalid")) {
+        errorMsg = "Invalid email or password. Please check your credentials and try again.";
       }
       
       showError(errorMsg);
@@ -229,7 +247,7 @@ export default function AuthScreen() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Notice</Text>
+            <Text style={styles.modalTitle}>Error</Text>
             <Text style={styles.modalMessage}>{errorMessage}</Text>
             <TouchableOpacity
               style={styles.modalButton}
@@ -359,6 +377,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginBottom: 12,
     textAlign: "center",
+    color: "#DC3545",
   },
   modalMessage: {
     fontSize: 16,

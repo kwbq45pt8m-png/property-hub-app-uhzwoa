@@ -132,6 +132,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("Starting email sign-in...", { email });
       const result = await authClient.signIn.email({ email, password });
       console.log("Email sign-in result:", result);
+      
+      // Check if the result indicates an error
+      if (result?.error) {
+        console.error("Sign-in returned error:", result.error);
+        const errorMessage = result.error.message || "Invalid email or password";
+        throw new Error(errorMessage);
+      }
+      
       await fetchUser();
       console.log("Email sign-in completed successfully");
     } catch (error: any) {
@@ -141,7 +149,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         status: error.status,
         response: error.response,
       });
-      throw error;
+      
+      // Create a user-friendly error message
+      let errorMessage = "Invalid email or password. Please try again.";
+      
+      if (error.message) {
+        // If the error already has a message, check if it's user-friendly
+        if (error.message.includes("Invalid") || error.message.includes("invalid")) {
+          errorMessage = "Invalid email or password. Please check your credentials and try again.";
+        } else if (error.message.includes("network") || error.message.includes("fetch")) {
+          errorMessage = "Network error. Please check your internet connection.";
+        } else if (error.message !== "Invalid email or password. Please try again.") {
+          // Use the original message if it's not the default
+          errorMessage = error.message;
+        }
+      }
+      
+      // Check status code
+      if (error.status === 400 || error.status === 401) {
+        errorMessage = "Invalid email or password. Please check your credentials and try again.";
+      }
+      
+      // Create a new error with the friendly message and preserve the status
+      const friendlyError: any = new Error(errorMessage);
+      friendlyError.status = error.status;
+      throw friendlyError;
     }
   };
 
@@ -154,6 +186,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         name,
       });
       console.log("Email sign-up result:", result);
+      
+      // Check if the result indicates an error
+      if (result?.error) {
+        console.error("Sign-up returned error:", result.error);
+        const errorMessage = result.error.message || "Unable to create account";
+        throw new Error(errorMessage);
+      }
+      
       await fetchUser();
       console.log("Email sign-up completed successfully");
     } catch (error: any) {
@@ -163,7 +203,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         status: error.status,
         response: error.response,
       });
-      throw error;
+      
+      // Create a user-friendly error message
+      let errorMessage = "Unable to create account. Please try again.";
+      
+      if (error.message) {
+        if (error.message.includes("already") || error.message.includes("exists")) {
+          errorMessage = "This email is already registered. Please sign in instead.";
+        } else if (error.message.includes("network") || error.message.includes("fetch")) {
+          errorMessage = "Network error. Please check your internet connection.";
+        } else if (error.message !== "Unable to create account. Please try again.") {
+          errorMessage = error.message;
+        }
+      }
+      
+      // Check status code
+      if (error.status === 400) {
+        errorMessage = "Unable to create account. Please check your information and try again.";
+      } else if (error.status === 409) {
+        errorMessage = "This email is already registered. Please sign in instead.";
+      }
+      
+      // Create a new error with the friendly message and preserve the status
+      const friendlyError: any = new Error(errorMessage);
+      friendlyError.status = error.status;
+      throw friendlyError;
     }
   };
 
