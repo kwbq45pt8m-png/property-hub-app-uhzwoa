@@ -4,8 +4,26 @@ import type { App } from '../index.js';
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50MB
 
+// Helper to format bytes to human readable size
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+}
+
 export function registerUploadRoutes(app: App) {
   const requireAuth = app.requireAuth();
+
+  // Log upload configuration on initialization
+  app.logger.info(
+    {
+      maxImageSize: formatBytes(MAX_IMAGE_SIZE),
+      maxVideoSize: formatBytes(MAX_VIDEO_SIZE),
+    },
+    'Upload endpoints configured'
+  );
 
   // POST /api/upload/property-image - Accepts multipart form data with 'image' field
   app.fastify.post<{ Body: any }>(
@@ -27,7 +45,25 @@ export function registerUploadRoutes(app: App) {
       );
 
       try {
-        const data = await request.file({ limits: { fileSize: MAX_IMAGE_SIZE } });
+        let data;
+        try {
+          data = await request.file({ limits: { fileSize: MAX_IMAGE_SIZE } });
+        } catch (err: any) {
+          // Handle file size limit errors from Fastify
+          if (err.code === 'FST_REQ_FILE_TOO_LARGE' || err.message?.includes('too large')) {
+            app.logger.warn(
+              { userId: session.user.id, error: err.message },
+              'Image file exceeds size limit'
+            );
+            return reply.status(413).send({
+              error: 'file_too_large',
+              message: `Image file exceeds maximum size of ${formatBytes(MAX_IMAGE_SIZE)}`,
+              maxSize: MAX_IMAGE_SIZE,
+              maxSizeFormatted: formatBytes(MAX_IMAGE_SIZE),
+            });
+          }
+          throw err;
+        }
 
         if (!data) {
           app.logger.warn(
@@ -36,20 +72,26 @@ export function registerUploadRoutes(app: App) {
           );
           return reply
             .status(400)
-            .send({ error: 'No file provided' });
+            .send({
+              error: 'no_file',
+              message: 'No file provided. Please attach an image file.',
+            });
         }
 
         let buffer: Buffer;
         try {
           buffer = await data.toBuffer();
-        } catch (err) {
+        } catch (err: any) {
           app.logger.warn(
-            { userId: session.user.id, filename: data.filename },
-            'File too large'
+            { userId: session.user.id, filename: data.filename, error: err.message },
+            'Failed to read image file'
           );
-          return reply
-            .status(413)
-            .send({ error: 'File too large (max 5MB for images)' });
+          return reply.status(413).send({
+            error: 'file_too_large',
+            message: `Image file exceeds maximum size of ${formatBytes(MAX_IMAGE_SIZE)}`,
+            maxSize: MAX_IMAGE_SIZE,
+            maxSizeFormatted: formatBytes(MAX_IMAGE_SIZE),
+          });
         }
 
         // Generate unique key with timestamp and user ID
@@ -98,29 +140,51 @@ export function registerUploadRoutes(app: App) {
       );
 
       try {
-        const data = await request.file({ limits: { fileSize: MAX_VIDEO_SIZE } });
+        let data;
+        try {
+          data = await request.file({ limits: { fileSize: MAX_VIDEO_SIZE } });
+        } catch (err: any) {
+          // Handle file size limit errors from Fastify
+          if (err.code === 'FST_REQ_FILE_TOO_LARGE' || err.message?.includes('too large')) {
+            app.logger.warn(
+              { userId: session.user.id, error: err.message },
+              'Video file exceeds size limit'
+            );
+            return reply.status(413).send({
+              error: 'file_too_large',
+              message: `Video file exceeds maximum size of ${formatBytes(MAX_VIDEO_SIZE)}`,
+              maxSize: MAX_VIDEO_SIZE,
+              maxSizeFormatted: formatBytes(MAX_VIDEO_SIZE),
+            });
+          }
+          throw err;
+        }
 
         if (!data) {
           app.logger.warn(
             { userId: session.user.id },
             'No file provided for video upload'
           );
-          return reply
-            .status(400)
-            .send({ error: 'No file provided' });
+          return reply.status(400).send({
+            error: 'no_file',
+            message: 'No file provided. Please attach a video file.',
+          });
         }
 
         let buffer: Buffer;
         try {
           buffer = await data.toBuffer();
-        } catch (err) {
+        } catch (err: any) {
           app.logger.warn(
-            { userId: session.user.id, filename: data.filename },
-            'Video file too large'
+            { userId: session.user.id, filename: data.filename, error: err.message },
+            'Failed to read video file'
           );
-          return reply
-            .status(413)
-            .send({ error: 'File too large (max 50MB for videos)' });
+          return reply.status(413).send({
+            error: 'file_too_large',
+            message: `Video file exceeds maximum size of ${formatBytes(MAX_VIDEO_SIZE)}`,
+            maxSize: MAX_VIDEO_SIZE,
+            maxSizeFormatted: formatBytes(MAX_VIDEO_SIZE),
+          });
         }
 
         // Generate unique key with timestamp and user ID

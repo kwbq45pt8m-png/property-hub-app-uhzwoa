@@ -15,6 +15,15 @@ export const app = await createApplication(schema);
 // Export App type for use in route files
 export type App = typeof app;
 
+// Configure Fastify to handle larger file uploads
+// Set body size limit to 50MB (52428800 bytes) for images and videos
+const MAX_BODY_SIZE = 52428800; // 50MB in bytes
+
+app.logger.info(
+  { maxBodySize: MAX_BODY_SIZE, maxBodySizeMB: MAX_BODY_SIZE / (1024 * 1024) },
+  'File upload size limit configured'
+);
+
 // Add global error handler for authentication requests
 app.fastify.setErrorHandler(async (error: any, request, reply) => {
   const statusCode = typeof error?.statusCode === 'number' ? error.statusCode : 500;
