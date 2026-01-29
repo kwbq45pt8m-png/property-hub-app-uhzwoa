@@ -4,6 +4,58 @@ import * as schema from '../db/schema.js';
 import type { App } from '../index.js';
 import { z } from 'zod';
 
+// Helper function to generate fresh signed URLs for property media
+async function enrichPropertyWithSignedUrls(
+  property: any,
+  app: App
+): Promise<any> {
+  const enriched = { ...property };
+
+  // Generate fresh signed URLs for photos
+  if (enriched.photos && Array.isArray(enriched.photos)) {
+    try {
+      enriched.photos = await Promise.all(
+        enriched.photos.map(async (key: string) => {
+          try {
+            const { url } = await app.storage.getSignedUrl(key);
+            return url;
+          } catch (err) {
+            app.logger.warn(
+              { key, error: err instanceof Error ? err.message : 'Unknown error' },
+              'Failed to generate signed URL for photo'
+            );
+            return null;
+          }
+        })
+      );
+      // Filter out null URLs
+      enriched.photos = enriched.photos.filter((url: string | null) => url !== null);
+    } catch (err) {
+      app.logger.warn(
+        { error: err instanceof Error ? err.message : 'Unknown error' },
+        'Failed to process photos'
+      );
+    }
+  }
+
+  // Generate fresh signed URL for virtual tour video
+  if (enriched.virtualTourUrl) {
+    try {
+      const { url } = await app.storage.getSignedUrl(enriched.virtualTourUrl);
+      enriched.virtualTourUrl = url;
+    } catch (err) {
+      app.logger.warn(
+        { key: enriched.virtualTourUrl, error: err instanceof Error ? err.message : 'Unknown error' },
+        'Failed to generate signed URL for virtual tour video'
+      );
+      // If we can't generate a signed URL, keep the original key
+      // Frontend may need to handle this case
+    }
+  }
+
+  return enriched;
+}
+
 const CreatePropertySchema = z.object({
   title: z.string().min(1),
   description: z.string().optional(),
@@ -114,7 +166,13 @@ export function registerPropertiesRoutes(app: App) {
 
         const properties = await dbQuery;
         app.logger.info({ count: properties.length }, 'Properties fetched');
-        return properties;
+
+        // Generate fresh signed URLs for all properties
+        const enrichedProperties = await Promise.all(
+          properties.map((prop: any) => enrichPropertyWithSignedUrls(prop, app))
+        );
+
+        return enrichedProperties;
       } catch (error) {
         app.logger.error({ err: error }, 'Failed to fetch properties');
         throw error;
@@ -147,7 +205,10 @@ export function registerPropertiesRoutes(app: App) {
         }
 
         app.logger.info({ propertyId: id }, 'Property details retrieved');
-        return property;
+
+        // Generate fresh signed URLs for media
+        const enrichedProperty = await enrichPropertyWithSignedUrls(property, app);
+        return enrichedProperty;
       } catch (error) {
         app.logger.error({ err: error, propertyId: id }, 'Failed to fetch property');
         throw error;
@@ -377,7 +438,13 @@ export function registerPropertiesRoutes(app: App) {
           { userId: session.user.id, count: properties.length },
           'User listings retrieved'
         );
-        return properties;
+
+        // Generate fresh signed URLs for all properties
+        const enrichedProperties = await Promise.all(
+          properties.map((prop: any) => enrichPropertyWithSignedUrls(prop, app))
+        );
+
+        return enrichedProperties;
       } catch (error) {
         app.logger.error(
           { err: error, userId: session.user.id },

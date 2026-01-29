@@ -101,15 +101,14 @@ export function registerUploadRoutes(app: App) {
         // Upload file
         const uploadedKey = await app.storage.upload(key, buffer);
 
-        // Get signed URL for client access
-        const { url } = await app.storage.getSignedUrl(uploadedKey);
-
         app.logger.info(
           { userId: session.user.id, filename: data.filename, key: uploadedKey },
           'Property image uploaded successfully'
         );
 
-        return { url, filename: data.filename };
+        // Return the S3 key instead of signed URL
+        // Signed URLs will be generated on retrieval to avoid expiration
+        return { key: uploadedKey, filename: data.filename };
       } catch (error) {
         app.logger.error(
           { err: error, userId: session.user.id },
@@ -194,15 +193,14 @@ export function registerUploadRoutes(app: App) {
         // Upload file
         const uploadedKey = await app.storage.upload(key, buffer);
 
-        // Get signed URL for client access
-        const { url } = await app.storage.getSignedUrl(uploadedKey);
-
         app.logger.info(
           { userId: session.user.id, filename: data.filename, key: uploadedKey },
           'Virtual tour video uploaded successfully'
         );
 
-        return { url, filename: data.filename };
+        // Return the S3 key instead of signed URL
+        // Signed URLs will be generated on retrieval to avoid expiration
+        return { key: uploadedKey, filename: data.filename };
       } catch (error) {
         app.logger.error(
           { err: error, userId: session.user.id },
