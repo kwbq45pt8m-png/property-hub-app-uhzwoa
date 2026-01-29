@@ -149,7 +149,7 @@ export default function ListPropertyScreen() {
             console.error("Upload error response:", errorText);
             
             if (response.status === 413) {
-              throw new Error("Image file is too large. Please try a smaller image or contact support.");
+              throw new Error(t('imageTooLarge'));
             }
             
             throw new Error(`Upload failed with status ${response.status}: ${errorText}`);
@@ -230,7 +230,7 @@ export default function ListPropertyScreen() {
           console.error("Upload error response:", errorText);
           
           if (response.status === 413) {
-            throw new Error("Video file is too large. Please try a shorter video or contact support.");
+            throw new Error(t('videoTooLarge'));
           }
           
           throw new Error(`Upload failed with status ${response.status}: ${errorText}`);
