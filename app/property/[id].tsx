@@ -300,6 +300,24 @@ export default function PropertyDetailScreen() {
           </View>
         )}
 
+        {/* Edit Button - For property owners */}
+        {isOwner && (
+          <View style={styles.footer}>
+            <TouchableOpacity
+              style={styles.editButton}
+              onPress={() => router.push(`/edit-property/${property.id}`)}
+            >
+              <IconSymbol 
+                ios_icon_name="pencil" 
+                android_material_icon_name="edit" 
+                size={20} 
+                color="#FFFFFF" 
+              />
+              <Text style={styles.editButtonText}>{t('editListing')}</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         <AdModal isVisible={showAdModal} onAdComplete={handleAdComplete} />
       </View>
     </>
@@ -474,6 +492,20 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   contactButtonText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  editButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+    paddingVertical: 16,
+    borderRadius: 12,
+    gap: 12,
+  },
+  editButtonText: {
     fontSize: 18,
     fontWeight: '600',
     color: '#FFFFFF',

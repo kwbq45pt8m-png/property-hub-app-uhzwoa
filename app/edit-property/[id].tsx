@@ -13,12 +13,12 @@ import {
   Image,
   ImageSourcePropType,
 } from "react-native";
-import { useRouter, Stack } from "expo-router";
+import { useRouter, Stack, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { IconSymbol } from "@/components/IconSymbol";
 import { colors } from "@/styles/commonStyles";
 import { useAuth } from "@/contexts/AuthContext";
-import { authenticatedPost, BACKEND_URL, getBearerToken } from "@/utils/api";
+import { authenticatedGet, authenticatedPut, authenticatedDelete, BACKEND_URL, getBearerToken } from "@/utils/api";
 import * as ImagePicker from "expo-image-picker";
 import AdModal from "@/components/AdModal";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -51,11 +51,28 @@ function resolveImageSource(source: string | number | ImageSourcePropType | unde
   return source as ImageSourcePropType;
 }
 
-export default function ListPropertyScreen() {
+interface Property {
+  id: string;
+  title: string;
+  description: string;
+  price: string;
+  size: number;
+  district: string;
+  equipment: string;
+  photos: string[];
+  virtualTourUrl?: string;
+  ownerId: string;
+  createdAt: string;
+}
+
+export default function EditPropertyScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { user } = useAuth();
   const { t } = useLanguage();
 
+  const [loading, setLoading] = useState(true);
+  const [property, setProperty] = useState<Property | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
@@ -64,14 +81,53 @@ export default function ListPropertyScreen() {
   const [equipment, setEquipment] = useState("");
   const [photos, setPhotos] = useState<string[]>([]);
   const [virtualTourVideoUrl, setVirtualTourVideoUrl] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [updating, setUpdating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
   const [uploadingVideo, setUploadingVideo] = useState(false);
   const [showDistrictPicker, setShowDistrictPicker] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showAdModal, setShowAdModal] = useState(false);
   const [errorModalVisible, setErrorModalVisible] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+
+  useEffect(() => {
+    loadProperty();
+  }, [id]);
+
+  const loadProperty = async () => {
+    try {
+      setLoading(true);
+      console.log("Loading property for editing:", id);
+      const data = await authenticatedGet<Property>(`/api/properties/${id}`);
+      
+      // Check if user is the owner
+      if (data.ownerId !== user?.id) {
+        console.error("User is not the owner of this property");
+        showError("You are not authorized to edit this property");
+        router.back();
+        return;
+      }
+
+      console.log("Property loaded:", data);
+      setProperty(data);
+      setTitle(data.title);
+      setDescription(data.description || "");
+      setPrice(data.price);
+      setSize(data.size.toString());
+      setDistrict(data.district);
+      setEquipment(data.equipment || "");
+      setPhotos(data.photos || []);
+      setVirtualTourVideoUrl(data.virtualTourUrl || "");
+    } catch (error: any) {
+      console.error("Error loading property:", error);
+      showError("Failed to load property. Please try again.");
+      router.back();
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const showError = (message: string) => {
     setErrorMessage(message);
@@ -229,18 +285,18 @@ export default function ListPropertyScreen() {
   };
 
   const handleSubmitClick = () => {
-    console.log("User tapped Submit Property button - showing ad first");
+    console.log("User tapped Update Property button - showing ad first");
     setShowAdModal(true);
   };
 
   const handleAdComplete = () => {
-    console.log("Ad completed - proceeding with property submission");
+    console.log("Ad completed - proceeding with property update");
     setShowAdModal(false);
     handleSubmit();
   };
 
   const handleSubmit = async () => {
-    console.log("Submitting property listing");
+    console.log("Updating property listing");
 
     const titleTrimmed = title.trim();
     const descriptionTrimmed = description.trim();
@@ -274,8 +330,9 @@ export default function ListPropertyScreen() {
     }
 
     try {
-      setLoading(true);
-      console.log("Submitting property listing:", {
+      setUpdating(true);
+      console.log("Updating property:", {
+        id,
         title: titleTrimmed,
         price: priceTrimmed,
         size: sizeTrimmed,
@@ -295,9 +352,9 @@ export default function ListPropertyScreen() {
         photos: photos,
       };
 
-      await authenticatedPost("/api/properties", propertyData);
+      await authenticatedPut(`/api/properties/${id}`, propertyData);
 
-      console.log("✅ Property listed successfully!");
+      console.log("✅ Property updated successfully!");
       setShowSuccessModal(true);
 
       setTimeout(() => {
@@ -305,23 +362,66 @@ export default function ListPropertyScreen() {
         router.back();
       }, 2000);
     } catch (error: any) {
-      console.error("Error listing property:", error);
-      showError(t('errorListingProperty') + " " + (error.message || ""));
+      console.error("Error updating property:", error);
+      showError(t('errorUpdatingProperty') + " " + (error.message || ""));
     } finally {
-      setLoading(false);
+      setUpdating(false);
     }
   };
 
+  const handleDeleteClick = () => {
+    console.log("User tapped Delete Property button");
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    console.log("User confirmed property deletion");
+    setShowDeleteModal(false);
+    
+    try {
+      setDeleting(true);
+      console.log("Deleting property:", id);
+      await authenticatedDelete(`/api/properties/${id}`);
+      console.log("✅ Property deleted successfully!");
+      
+      // Show success message briefly then navigate back
+      showError(t('propertyDeletedSuccess'));
+      setTimeout(() => {
+        router.replace("/(tabs)/profile");
+      }, 1500);
+    } catch (error: any) {
+      console.error("Error deleting property:", error);
+      showError(t('errorDeletingProperty') + " " + (error.message || ""));
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container} edges={['bottom']}>
+        <Stack.Screen
+          options={{
+            title: t('editProperty'),
+            headerShown: true,
+            headerBackTitle: "Back",
+          }}
+        />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   const districtDisplay = district || t('selectDistrict');
-  const listPropertyTitle = t('listProperty');
-  const listYourPropertyText = t('listYourProperty');
-  const fillDetailsText = t('fillDetails');
+  const editPropertyTitle = t('editProperty');
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <Stack.Screen
         options={{
-          title: listPropertyTitle,
+          title: editPropertyTitle,
           headerShown: true,
           headerBackTitle: "Back",
         }}
@@ -333,9 +433,9 @@ export default function ListPropertyScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>{listYourPropertyText}</Text>
+          <Text style={styles.headerTitle}>{t('editProperty')}</Text>
           <Text style={styles.headerSubtitle}>
-            {fillDetailsText}
+            {t('fillDetails')}
           </Text>
         </View>
 
@@ -535,12 +635,12 @@ export default function ListPropertyScreen() {
           </View>
 
           <TouchableOpacity
-            style={[styles.submitButton, loading && styles.submitButtonDisabled]}
+            style={[styles.submitButton, updating && styles.submitButtonDisabled]}
             onPress={handleSubmitClick}
-            disabled={loading}
+            disabled={updating}
             activeOpacity={0.8}
           >
-            {loading ? (
+            {updating ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
               <React.Fragment>
@@ -550,13 +650,36 @@ export default function ListPropertyScreen() {
                   size={20}
                   color="#FFFFFF"
                 />
-                <Text style={styles.submitButtonText}>{t('listPropertyButton')}</Text>
+                <Text style={styles.submitButtonText}>{t('updatePropertyButton')}</Text>
+              </React.Fragment>
+            )}
+          </TouchableOpacity>
+
+          {/* Delete Button */}
+          <TouchableOpacity
+            style={[styles.deleteButton, deleting && styles.deleteButtonDisabled]}
+            onPress={handleDeleteClick}
+            disabled={deleting}
+            activeOpacity={0.8}
+          >
+            {deleting ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <React.Fragment>
+                <IconSymbol
+                  ios_icon_name="trash"
+                  android_material_icon_name="delete"
+                  size={20}
+                  color="#FFFFFF"
+                />
+                <Text style={styles.deleteButtonText}>{t('deleteProperty')}</Text>
               </React.Fragment>
             )}
           </TouchableOpacity>
         </View>
       </ScrollView>
 
+      {/* District Picker Modal */}
       <Modal
         visible={showDistrictPicker}
         animationType="slide"
@@ -617,6 +740,7 @@ export default function ListPropertyScreen() {
         </View>
       </Modal>
 
+      {/* Success Modal */}
       <Modal
         visible={showSuccessModal}
         animationType="fade"
@@ -632,8 +756,37 @@ export default function ListPropertyScreen() {
             />
             <Text style={styles.successModalTitle}>{t('success')}</Text>
             <Text style={styles.successModalText}>
-              {t('propertyListedSuccess')}
+              {t('propertyUpdatedSuccess')}
             </Text>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        visible={showDeleteModal}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowDeleteModal(false)}
+      >
+        <View style={styles.deleteModalOverlay}>
+          <View style={styles.deleteModalContent}>
+            <Text style={styles.deleteModalTitle}>{t('deleteProperty')}</Text>
+            <Text style={styles.deleteModalMessage}>{t('confirmDelete')}</Text>
+            <View style={styles.deleteModalActions}>
+              <TouchableOpacity
+                style={styles.deleteModalCancelButton}
+                onPress={() => setShowDeleteModal(false)}
+              >
+                <Text style={styles.deleteModalCancelText}>{t('cancel')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.deleteModalConfirmButton}
+                onPress={handleDeleteConfirm}
+              >
+                <Text style={styles.deleteModalConfirmText}>{t('delete')}</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -668,6 +821,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   scrollView: {
     flex: 1,
@@ -764,6 +922,26 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   submitButtonText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  deleteButton: {
+    backgroundColor: colors.error,
+    borderRadius: 12,
+    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 8,
+    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.15)',
+    elevation: 3,
+  },
+  deleteButtonDisabled: {
+    opacity: 0.6,
+  },
+  deleteButtonText: {
     fontSize: 18,
     fontWeight: '600',
     color: '#FFFFFF',
@@ -917,6 +1095,60 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#FF3B30',
+  },
+  deleteModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
+  deleteModalContent: {
+    backgroundColor: colors.background,
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+  },
+  deleteModalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginBottom: 12,
+  },
+  deleteModalMessage: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  deleteModalActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  deleteModalCancelButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    backgroundColor: colors.backgroundAlt,
+    alignItems: 'center',
+  },
+  deleteModalCancelText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  deleteModalConfirmButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    backgroundColor: colors.error,
+    alignItems: 'center',
+  },
+  deleteModalConfirmText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   errorModalOverlay: {
     flex: 1,

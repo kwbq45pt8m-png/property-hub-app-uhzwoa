@@ -173,6 +173,19 @@ const translations: Record<Language, Record<string, string>> = {
     english: "English",
     traditionalChinese: "繁體中文",
     simplifiedChinese: "简体中文",
+    
+    // Edit Property
+    editListing: "Edit Listing",
+    editProperty: "Edit Property",
+    updateProperty: "Update Property",
+    updatePropertyButton: "Update Property",
+    propertyUpdatedSuccess: "Your property has been updated successfully",
+    errorUpdatingProperty: "Failed to update property. Please try again.",
+    deleteProperty: "Delete Property",
+    confirmDelete: "Are you sure you want to delete this property? This action cannot be undone.",
+    delete: "Delete",
+    propertyDeletedSuccess: "Property deleted successfully",
+    errorDeletingProperty: "Failed to delete property. Please try again.",
   },
   "zh-TW": {
     // Home Screen
@@ -279,6 +292,19 @@ const translations: Record<Language, Record<string, string>> = {
     english: "English",
     traditionalChinese: "繁體中文",
     simplifiedChinese: "简体中文",
+    
+    // Edit Property
+    editListing: "編輯刊登",
+    editProperty: "編輯物業",
+    updateProperty: "更新物業",
+    updatePropertyButton: "更新物業",
+    propertyUpdatedSuccess: "您的物業已成功更新",
+    errorUpdatingProperty: "更新物業失敗，請重試。",
+    deleteProperty: "刪除物業",
+    confirmDelete: "確定要刪除此物業嗎？此操作無法復原。",
+    delete: "刪除",
+    propertyDeletedSuccess: "物業已成功刪除",
+    errorDeletingProperty: "刪除物業失敗，請重試。",
   },
   "zh-CN": {
     // Home Screen
@@ -385,5 +411,18 @@ const translations: Record<Language, Record<string, string>> = {
     english: "English",
     traditionalChinese: "繁體中文",
     simplifiedChinese: "简体中文",
+    
+    // Edit Property
+    editListing: "编辑刊登",
+    editProperty: "编辑物业",
+    updateProperty: "更新物业",
+    updatePropertyButton: "更新物业",
+    propertyUpdatedSuccess: "您的物业已成功更新",
+    errorUpdatingProperty: "更新物业失败，请重试。",
+    deleteProperty: "删除物业",
+    confirmDelete: "确定要删除此物业吗？此操作无法复原。",
+    delete: "删除",
+    propertyDeletedSuccess: "物业已成功删除",
+    errorDeletingProperty: "删除物业失败，请重试。",
   },
 };
