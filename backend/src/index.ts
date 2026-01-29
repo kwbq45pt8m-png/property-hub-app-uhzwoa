@@ -16,8 +16,8 @@ export const app = await createApplication(schema);
 export type App = typeof app;
 
 // Configure Fastify to handle larger file uploads
-// Set body size limit to 50MB (52428800 bytes) for images and videos
-const MAX_BODY_SIZE = 52428800; // 50MB in bytes
+// Set body size limit to 200MB (209715200 bytes) for images and videos
+const MAX_BODY_SIZE = 209715200; // 200MB in bytes
 
 app.logger.info(
   { maxBodySize: MAX_BODY_SIZE, maxBodySizeMB: MAX_BODY_SIZE / (1024 * 1024) },
