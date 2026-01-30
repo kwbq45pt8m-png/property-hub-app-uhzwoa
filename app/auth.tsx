@@ -80,8 +80,10 @@ export default function AuthScreen() {
         errorMsg = error.message;
       }
       
-      // Check for specific status codes
-      if (error.status === 400 || errorMsg.includes("400")) {
+      // Check for specific status codes and error messages
+      if (error.status === 403 || errorMsg.includes("403") || errorMsg.includes("invalid origin") || errorMsg.includes("Invalid origin")) {
+        errorMsg = "The authentication server is being configured. Please wait a moment and try again. If the issue persists, the app may need to be restarted.";
+      } else if (error.status === 400 || errorMsg.includes("400")) {
         errorMsg = mode === "signin" 
           ? "Invalid email or password. Please check your credentials and try again."
           : "Unable to create account. Please check your information and try again.";
@@ -89,8 +91,6 @@ export default function AuthScreen() {
         errorMsg = mode === "signin" 
           ? "Invalid email or password. Please check your credentials and try again."
           : "Unable to create account. This email may already be registered.";
-      } else if (error.status === 403 || errorMsg.includes("403")) {
-        errorMsg = "Authentication is temporarily unavailable. The server is being configured. Please try again in a moment.";
       } else if (errorMsg.includes("network") || errorMsg.includes("fetch") || errorMsg.includes("Failed to fetch")) {
         errorMsg = "Network error. Please check your internet connection and try again.";
       } else if (errorMsg.includes("Invalid credentials") || errorMsg.includes("invalid")) {
@@ -125,8 +125,8 @@ export default function AuthScreen() {
       // Provide helpful message for OAuth configuration issues
       let errorMsg = error.message || "Authentication failed";
       
-      if (errorMsg.includes("403")) {
-        errorMsg = "Authentication is temporarily unavailable. The server is being configured. Please try again in a moment.";
+      if (errorMsg.includes("403") || errorMsg.includes("invalid origin") || errorMsg.includes("Invalid origin")) {
+        errorMsg = "The authentication server is being configured. Please wait a moment and try again. If the issue persists, the app may need to be restarted.";
       } else if (errorMsg.includes("500") || errorMsg.includes("temporarily unavailable")) {
         errorMsg = `${provider.charAt(0).toUpperCase() + provider.slice(1)} sign-in requires OAuth credentials to be configured. This is normal during development. OAuth will work after the app is published to the App Store with proper credentials configured in the backend.`;
       } else if (errorMsg.includes("cancelled")) {
