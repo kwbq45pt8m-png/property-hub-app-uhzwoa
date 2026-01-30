@@ -63,7 +63,7 @@ function AuthBootstrap({ children }: { children: React.ReactNode }) {
       console.log("[AuthBootstrap] User authenticated, redirecting to /(tabs)");
       router.replace("/(tabs)");
     }
-  }, [user, loading, segments]);
+  }, [user, loading, segments, router]);
 
   // Show loading screen while checking authentication
   if (loading) {

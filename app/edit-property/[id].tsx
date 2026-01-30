@@ -97,6 +97,7 @@ export default function EditPropertyScreen() {
 
   useEffect(() => {
     loadProperty();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const loadProperty = async () => {
