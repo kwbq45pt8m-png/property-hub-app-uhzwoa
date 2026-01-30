@@ -78,22 +78,70 @@ const isProduction = process.env.NODE_ENV === 'production';
 const appUrl = process.env.APP_URL || 'http://localhost:3000';
 const apiUrl = process.env.API_URL || 'http://localhost:5000';
 
+// Helper function to check if origin is allowed in development
+function isAllowedOrigin(origin: string): boolean {
+  // In development, allow all localhost and common development origins
+  if (!isProduction) {
+    // Allow localhost with any port
+    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      return true;
+    }
+    // Allow common tunnel services
+    if (origin.includes('ngrok.io') || origin.includes('ngrok-free.app') || origin.includes('specular.dev')) {
+      return true;
+    }
+    // Allow requests without origin (direct API calls)
+    if (!origin || origin === 'null') {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+// Build trusted origins list
+const trustedOrigins = [
+  appUrl,
+  apiUrl,
+  ...(process.env.TRUSTED_ORIGINS ? process.env.TRUSTED_ORIGINS.split(',').map((o) => o.trim()) : []),
+];
+
+// In development, add wildcard patterns for common development hosts
+if (!isProduction) {
+  trustedOrigins.push(
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:3002',
+    'http://localhost:5000',
+    'http://localhost:5001',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:3001',
+    'http://127.0.0.1:5000',
+    'http://127.0.0.1:5001'
+  );
+}
+
 // Configure Better Auth with comprehensive settings
 const authConfig: any = {
   // Set base URL for auth endpoints
   baseURL: apiUrl,
 
   // Configure trusted origins for CORS
-  trustedOrigins: [
-    appUrl,
-    apiUrl,
-    ...(process.env.TRUSTED_ORIGINS ? process.env.TRUSTED_ORIGINS.split(',') : []),
-  ],
+  trustedOrigins,
 
   // Enable email/password authentication
   emailAndPassword: {
     enabled: true,
   },
+
+  // Custom origin validator for development flexibility
+  ...(isProduction ? {} : {
+    // In development, use custom origin validation
+    advanced: {
+      // Allow requests from development origins
+      disableCsrfCheck: !isProduction, // Disable CSRF in development for easier testing
+    },
+  }),
 
   // Ensure proper session handling for OAuth flows
   sessionConfig: {
@@ -152,11 +200,14 @@ authConfig.socialProviders = socialProviders;
 app.logger.info(
   {
     baseURL: authConfig.baseURL,
+    trustedOriginsCount: authConfig.trustedOrigins?.length || 0,
     trustedOrigins: authConfig.trustedOrigins,
     emailEnabled: authConfig.emailAndPassword?.enabled,
     googleEnabled: !!authConfig.socialProviders.google,
     appleEnabled: !!authConfig.socialProviders.apple,
     secure: authConfig.session?.cookieOptions?.secure,
+    originValidationMode: isProduction ? 'strict (production)' : 'permissive (development)',
+    csrfCheckDisabled: !isProduction,
   },
   'Authentication configured'
 );

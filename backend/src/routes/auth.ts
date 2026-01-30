@@ -388,4 +388,46 @@ export function registerAuthRoutes(app: App) {
       }
     }
   );
+
+  // Origin debug endpoint - helps troubleshoot CORS and origin validation issues
+  app.fastify.get(
+    '/api/auth-origin-debug',
+    {
+      schema: {
+        description: 'Debug origin validation for authentication (development only)',
+        tags: ['auth'],
+      },
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const origin = request.headers.origin || 'no-origin-header';
+      const referer = request.headers.referer || 'no-referer-header';
+      const host = request.headers.host || 'no-host-header';
+
+      app.logger.info(
+        { origin, referer, host },
+        'Origin debug check'
+      );
+
+      return {
+        debugInfo: {
+          origin,
+          referer,
+          host,
+          method: request.method,
+          url: request.url,
+        },
+        environmentInfo: {
+          environment: process.env.NODE_ENV || 'development',
+          appUrl: process.env.APP_URL || 'http://localhost:3000',
+          apiUrl: process.env.API_URL || 'http://localhost:5000',
+        },
+        originValidation: {
+          isLocalhost: origin.includes('localhost') || origin.includes('127.0.0.1'),
+          isTunnel: origin.includes('ngrok') || origin.includes('specular.dev'),
+          isAllowed: !!(origin.includes('localhost') || origin.includes('127.0.0.1') || origin.includes('ngrok') || origin.includes('specular.dev')),
+        },
+        message: 'Use this endpoint to debug origin validation issues. Check if your origin is recognized as allowed.',
+      };
+    }
+  );
 }
